@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react" // Re-add Sparkles import
 
 export function StickyFooter() {
   return (
