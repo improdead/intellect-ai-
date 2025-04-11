@@ -1,30 +1,32 @@
-import { AuthOptions } from '@auth0/nextjs-auth0';
+import { AuthOptions } from "@auth0/nextjs-auth0";
 
 // Auth0 configuration options
 export const auth0Config: AuthOptions = {
   authorizationParams: {
     // Default to Google login when no connection is specified
-    connection: 'google-oauth2',
+    connection: "google-oauth2",
     // Scope for OpenID Connect
-    scope: 'openid profile email',
+    scope: "openid profile email",
     // Response type for Auth0
-    response_type: 'code',
+    response_type: "code",
     // Response mode for Auth0
-    response_mode: 'query',
+    response_mode: "query",
   },
   routes: {
     // Route for callback after login
-    callback: '/api/auth/callback',
+    callback: "/api/auth/callback",
     // Route for login
-    login: '/api/auth/login',
+    login: "/api/auth/login",
     // Route for logout
-    logout: '/api/auth/logout',
+    logout: "/api/auth/logout",
     // Redirect to home page after logout
-    postLogoutRedirect: '/',
+    postLogoutRedirect: "/",
+    // Redirect to dashboard after login
+    loginReturn: "/dashboard",
   },
   session: {
     // Use cookies for session
-    strategy: 'cookie',
+    strategy: "cookie",
     // Cookie lifetime in seconds (30 days)
     rollingDuration: 60 * 60 * 24 * 30,
     // Absolute cookie lifetime in seconds (30 days)

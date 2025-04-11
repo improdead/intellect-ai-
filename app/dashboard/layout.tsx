@@ -57,7 +57,9 @@ export default function DashboardLayout({
   // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push("/api/auth/login?connection=google-oauth2");
+      router.push(
+        "/api/auth/login?connection=google-oauth2&returnTo=/dashboard"
+      );
     }
   }, [user, isLoading, router]);
 

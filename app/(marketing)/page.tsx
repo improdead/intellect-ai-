@@ -17,6 +17,13 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  Rocket,
+  Atom,
+  Dna,
+  Globe,
+  BookOpen,
+  Code,
+  Palette,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +32,7 @@ import { useRouter } from "next/navigation";
 import StackedCards from "@/components/stacked-cards";
 import VideoPreview from "@/components/video-preview";
 import TextRotate from "@/components/text/text-rotate";
+import { BentoGrid } from "@/components/bento-grid";
 
 // Dynamically import the background component with no SSR to avoid hydration issues
 const WavyParticlesBackground = dynamic(
@@ -68,7 +76,7 @@ export default function Home() {
   const handleGetStarted = () => {
     setIsButtonClicked(true);
     setTimeout(() => {
-      router.push("/login");
+      router.push("/login?returnTo=/dashboard");
     }, 600);
   };
 
@@ -219,6 +227,119 @@ export default function Home() {
               />
             </motion.div>
           </div>
+        </section>
+
+        <section id="bento" className="py-20 container">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl md:text-5xl font-bold">
+              Explore our learning ecosystem
+            </h2>
+            <p className="text-foreground/70 mt-4 max-w-2xl mx-auto">
+              Discover all the ways Intellect can transform your learning
+              experience
+            </p>
+          </motion.div>
+
+          <BentoGrid
+            items={[
+              {
+                title: "AI-Powered Tutoring",
+                description:
+                  "Get personalized explanations and answers to your questions with our advanced AI tutor.",
+                icon: <Brain className="h-8 w-8 text-purple-500" />,
+                color: "from-purple-500/20 to-indigo-500/20",
+                width: "large",
+                height: "medium",
+                link: "/features/ai-tutor",
+              },
+              {
+                title: "Interactive Visualizations",
+                description:
+                  "See complex concepts come to life with dynamic, interactive visualizations.",
+                icon: <Sparkles className="h-8 w-8 text-blue-500" />,
+                color: "from-blue-500/20 to-cyan-500/20",
+                width: "medium",
+                height: "medium",
+                link: "/features/visualizations",
+              },
+              {
+                title: "Physics Simulations",
+                description:
+                  "Explore the laws of physics through interactive simulations and experiments.",
+                icon: <Atom className="h-8 w-8 text-cyan-500" />,
+                color: "from-cyan-500/20 to-blue-500/20",
+                width: "medium",
+                height: "small",
+                link: "/subjects/physics",
+              },
+              {
+                title: "Biology Explorer",
+                description:
+                  "Dive into the world of living organisms with detailed models and explanations.",
+                icon: <Dna className="h-8 w-8 text-green-500" />,
+                color: "from-green-500/20 to-emerald-500/20",
+                width: "medium",
+                height: "small",
+                link: "/subjects/biology",
+              },
+              {
+                title: "Progress Tracking",
+                description:
+                  "Monitor your learning journey with detailed analytics and insights.",
+                icon: <BarChart className="h-8 w-8 text-amber-500" />,
+                color: "from-amber-500/20 to-yellow-500/20",
+                width: "medium",
+                height: "medium",
+                link: "/features/progress",
+              },
+              {
+                title: "Coding Playground",
+                description:
+                  "Learn programming concepts with an interactive coding environment.",
+                icon: <Code className="h-8 w-8 text-indigo-500" />,
+                color: "from-indigo-500/20 to-violet-500/20",
+                width: "medium",
+                height: "medium",
+                link: "/features/coding",
+              },
+              {
+                title: "Global Learning Community",
+                description:
+                  "Connect with learners from around the world to collaborate and share knowledge.",
+                icon: <Globe className="h-8 w-8 text-blue-500" />,
+                color: "from-blue-500/20 to-indigo-500/20",
+                width: "large",
+                height: "small",
+                link: "/features/community",
+              },
+              {
+                title: "Creative Arts",
+                description:
+                  "Explore music, visual arts, and creative expression with AI-guided tutorials.",
+                icon: <Palette className="h-8 w-8 text-pink-500" />,
+                color: "from-pink-500/20 to-rose-500/20",
+                width: "medium",
+                height: "small",
+                link: "/subjects/arts",
+              },
+              {
+                title: "Space Exploration",
+                description:
+                  "Journey through the cosmos with interactive astronomy lessons and simulations.",
+                icon: <Rocket className="h-8 w-8 text-violet-500" />,
+                color: "from-violet-500/20 to-purple-500/20",
+                width: "medium",
+                height: "small",
+                link: "/subjects/astronomy",
+              },
+            ]}
+          />
         </section>
 
         <section id="features" className="pt-20 pb-10 container">

@@ -17,7 +17,8 @@ export default function LoginPage() {
 
     // Redirect to Auth0 login with Google if not logged in and not loading
     if (!user && !isLoading) {
-      window.location.href = "/api/auth/login?connection=google-oauth2";
+      window.location.href =
+        "/api/auth/login?connection=google-oauth2&returnTo=/dashboard";
     }
   }, [user, isLoading, router]);
 
