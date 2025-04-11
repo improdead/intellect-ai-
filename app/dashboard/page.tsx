@@ -239,9 +239,9 @@ export default function DashboardPage() {
               asChild
               className="rounded-xl shadow-md hover:shadow-lg transition-all duration-300 group"
             >
-              <Link href="/dashboard/chat">
+              <Link href="/dashboard/intelect">
                 <MessageSquare className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
-                Chat with AI Tutor
+                Chat with intelect
               </Link>
             </Button>
           </motion.div>
@@ -384,16 +384,16 @@ export default function DashboardPage() {
           className="px-6"
         >
           <Tabs
-            defaultValue="chat"
+            defaultValue="intelect"
             className="rounded-xl overflow-hidden shadow-lg bg-card/50 backdrop-blur-sm border border-border/10"
           >
             <TabsList className="grid w-full grid-cols-4 p-1.5 bg-muted/50 gap-1">
               <TabsTrigger
-                value="chat"
+                value="intelect"
                 className="rounded-lg data-[state=active]:shadow-md py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
               >
                 <MessageSquare className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">AI Chat</span>
+                <span className="hidden sm:inline">intelect</span>
               </TabsTrigger>
               <TabsTrigger
                 value="quiz"
@@ -417,10 +417,10 @@ export default function DashboardPage() {
                 <span className="hidden sm:inline">Analytics</span>
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="chat" className="space-y-4">
+            <TabsContent value="intelect" className="space-y-4">
               <Card>
                 <CardHeader className="p-4">
-                  <CardTitle className="text-lg">AI Tutor Chat</CardTitle>
+                  <CardTitle className="text-lg">intelect AI</CardTitle>
                   <CardDescription>
                     Ask questions and get personalized explanations from your AI
                     tutor
@@ -441,7 +441,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <Button asChild className="w-full">
-                      <Link href="/dashboard/chat">Start Chatting</Link>
+                      <Link href="/dashboard/intelect">Chat with intelect</Link>
                     </Button>
                   </div>
                 </CardContent>
@@ -528,7 +528,7 @@ export default function DashboardPage() {
           transition={{ duration: 0.5 }}
           className="text-center text-sm text-muted-foreground py-8"
         >
-          <p>© 2023 Intellect Learning Platform. All rights reserved.</p>
+          <p>© 2025 Intelect Learning Platform. All rights reserved.</p>
         </motion.div>
       </div>
     </>
