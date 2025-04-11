@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import {
   LineChart,
   Line,
@@ -18,8 +24,12 @@ import {
   BarChart,
   Bar,
   Cell,
-} from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+} from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
   Atom,
   Calculator,
@@ -33,7 +43,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
-} from "lucide-react"
+} from "lucide-react";
 
 // Sample data for charts
 const weeklyProgressData = [
@@ -44,14 +54,14 @@ const weeklyProgressData = [
   { day: "Fri", minutes: 90, topics: 6 },
   { day: "Sat", minutes: 120, topics: 8 },
   { day: "Sun", minutes: 60, topics: 4 },
-]
+];
 
 const subjectProgressData = [
   { subject: "Physics", progress: 68, color: "#7c3aed" },
   { subject: "Math", progress: 82, color: "#3b82f6" },
   { subject: "Chemistry", progress: 45, color: "#10b981" },
   { subject: "Biology", progress: 59, color: "#f59e0b" },
-]
+];
 
 const recentTopics = [
   {
@@ -86,7 +96,7 @@ const recentTopics = [
     icon: <Leaf className="h-5 w-5" />,
     lastStudied: "1 week ago",
   },
-]
+];
 
 const achievements = [
   {
@@ -121,10 +131,10 @@ const achievements = [
     icon: <Clock3 className="h-10 w-10 text-purple-500" />,
     date: "In progress (7/10 hours)",
   },
-]
+];
 
 export default function ProgressPage() {
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState("overview");
 
   return (
     <motion.div
@@ -136,22 +146,35 @@ export default function ProgressPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Your Learning Progress</h1>
-          <p className="text-foreground/70">Track your achievements and study patterns</p>
+          <p className="text-foreground/70">
+            Track your achievements and study patterns
+          </p>
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" className="border-primary/20 hover:bg-primary/5">
+          <Button
+            variant="outline"
+            className="border-primary/20 hover:bg-primary/5"
+          >
             <Calendar className="h-4 w-4 mr-2" />
             This Week
           </Button>
-          <Button variant="outline" className="border-primary/20 hover:bg-primary/5">
+          <Button
+            variant="outline"
+            className="border-primary/20 hover:bg-primary/5"
+          >
             <BarChart2 className="h-4 w-4 mr-2" />
             Export Report
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        defaultValue="overview"
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full"
+      >
         <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
@@ -201,11 +224,15 @@ export default function ProgressPage() {
                         <div className="flex items-center mt-1 text-xs text-emerald-500">
                           <ArrowUpRight className="h-3 w-3 mr-1" />
                           {stat.change}
-                          <span className="text-foreground/60 ml-1">{stat.description}</span>
+                          <span className="text-foreground/60 ml-1">
+                            {stat.description}
+                          </span>
                         </div>
                       )}
                     </div>
-                    <div className="p-2 rounded-full bg-primary/10">{stat.icon}</div>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      {stat.icon}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -216,7 +243,9 @@ export default function ProgressPage() {
           <Card className="border-primary/10">
             <CardHeader>
               <CardTitle>Weekly Study Progress</CardTitle>
-              <CardDescription>Your study time and topics covered this week</CardDescription>
+              <CardDescription>
+                Your study time and topics covered this week
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -233,7 +262,10 @@ export default function ProgressPage() {
                 className="h-[300px]"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={weeklyProgressData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart
+                    data={weeklyProgressData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis dataKey="day" />
                     <YAxis yAxisId="left" orientation="left" />
@@ -264,21 +296,33 @@ export default function ProgressPage() {
           <Card className="border-primary/10">
             <CardHeader>
               <CardTitle>Recently Studied Topics</CardTitle>
-              <CardDescription>Your progress on recently studied topics</CardDescription>
+              <CardDescription>
+                Your progress on recently studied topics
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {recentTopics.map((topic) => (
-                  <div key={topic.id} className="flex items-center justify-between">
+                  <div
+                    key={topic.id}
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-primary/10">{topic.icon}</div>
+                      <div className="p-2 rounded-full bg-primary/10">
+                        {topic.icon}
+                      </div>
                       <div>
                         <h4 className="font-medium">{topic.name}</h4>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs font-normal">
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-normal"
+                          >
                             {topic.subject}
                           </Badge>
-                          <span className="text-xs text-foreground/60">Last studied: {topic.lastStudied}</span>
+                          <span className="text-xs text-foreground/60">
+                            Last studied: {topic.lastStudied}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -286,7 +330,9 @@ export default function ProgressPage() {
                       <div className="w-32">
                         <Progress value={topic.progress} className="h-2" />
                       </div>
-                      <span className="text-sm font-medium">{topic.progress}%</span>
+                      <span className="text-sm font-medium">
+                        {topic.progress}%
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -301,7 +347,9 @@ export default function ProgressPage() {
             <Card className="border-primary/10">
               <CardHeader>
                 <CardTitle>Subject Progress</CardTitle>
-                <CardDescription>Your progress across different subjects</CardDescription>
+                <CardDescription>
+                  Your progress across different subjects
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
@@ -311,7 +359,12 @@ export default function ProgressPage() {
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.2} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        horizontal={true}
+                        vertical={false}
+                        opacity={0.2}
+                      />
                       <XAxis type="number" domain={[0, 100]} />
                       <YAxis dataKey="subject" type="category" width={80} />
                       <Tooltip
@@ -322,7 +375,11 @@ export default function ProgressPage() {
                           borderRadius: "0.5rem",
                         }}
                       />
-                      <Bar dataKey="progress" radius={[0, 4, 4, 0]} barSize={20}>
+                      <Bar
+                        dataKey="progress"
+                        radius={[0, 4, 4, 0]}
+                        barSize={20}
+                      >
                         {subjectProgressData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
@@ -336,7 +393,9 @@ export default function ProgressPage() {
             <Card className="border-primary/10">
               <CardHeader>
                 <CardTitle>Subject Details</CardTitle>
-                <CardDescription>Detailed breakdown of your subject progress</CardDescription>
+                <CardDescription>
+                  Detailed breakdown of your subject progress
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -350,12 +409,36 @@ export default function ProgressPage() {
                           {i === 3 && <Leaf className="h-5 w-5" />}
                           <h4 className="font-medium">{subject.subject}</h4>
                         </div>
-                        <span className="text-sm font-medium">{subject.progress}%</span>
+                        <span className="text-sm font-medium">
+                          {subject.progress}%
+                        </span>
                       </div>
-                      <Progress value={subject.progress} className="h-2" indicatorColor={subject.color} />
+                      <Progress
+                        value={subject.progress}
+                        className="h-2"
+                        indicatorColor={subject.color}
+                      />
                       <div className="flex justify-between text-xs text-foreground/60 mt-1">
-                        <span>Topics: {i === 0 ? "8/12" : i === 1 ? "10/12" : i === 2 ? "5/11" : "7/12"}</span>
-                        <span>Quizzes: {i === 0 ? "4/6" : i === 1 ? "5/6" : i === 2 ? "3/6" : "4/6"}</span>
+                        <span>
+                          Topics:{" "}
+                          {i === 0
+                            ? "8/12"
+                            : i === 1
+                            ? "10/12"
+                            : i === 2
+                            ? "5/11"
+                            : "7/12"}
+                        </span>
+                        <span>
+                          Quizzes:{" "}
+                          {i === 0
+                            ? "4/6"
+                            : i === 1
+                            ? "5/6"
+                            : i === 2
+                            ? "3/6"
+                            : "4/6"}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -368,26 +451,31 @@ export default function ProgressPage() {
           <Card className="border-primary/10">
             <CardHeader>
               <CardTitle>Recommended Next Steps</CardTitle>
-              <CardDescription>Based on your progress and learning patterns</CardDescription>
+              <CardDescription>
+                Based on your progress and learning patterns
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   {
                     title: "Complete Chemistry Module",
-                    description: "You're 45% through - finish the Periodic Table section",
+                    description:
+                      "You're 45% through - finish the Periodic Table section",
                     icon: <Flask className="h-5 w-5 text-emerald-500" />,
                     time: "Est. 2 hours",
                   },
                   {
                     title: "Take Physics Quiz",
-                    description: "Test your knowledge on Newton's Laws of Motion",
+                    description:
+                      "Test your knowledge on Newton's Laws of Motion",
                     icon: <Atom className="h-5 w-5 text-blue-500" />,
                     time: "Est. 30 minutes",
                   },
                   {
                     title: "Review Math Concepts",
-                    description: "Strengthen your understanding of calculus fundamentals",
+                    description:
+                      "Strengthen your understanding of calculus fundamentals",
                     icon: <Calculator className="h-5 w-5 text-purple-500" />,
                     time: "Est. 1 hour",
                   },
@@ -395,12 +483,22 @@ export default function ProgressPage() {
                   <Card key={i} className="border-primary/10 bg-primary/5">
                     <CardContent className="p-6">
                       <div className="flex flex-col h-full">
-                        <div className="p-2 w-fit rounded-full bg-background mb-4">{item.icon}</div>
+                        <div className="p-2 w-fit rounded-full bg-background mb-4">
+                          {item.icon}
+                        </div>
                         <h4 className="font-medium mb-2">{item.title}</h4>
-                        <p className="text-sm text-foreground/70 mb-4">{item.description}</p>
+                        <p className="text-sm text-foreground/70 mb-4">
+                          {item.description}
+                        </p>
                         <div className="mt-auto flex justify-between items-center">
-                          <span className="text-xs text-foreground/60">{item.time}</span>
-                          <Button variant="ghost" size="sm" className="h-8 px-2">
+                          <span className="text-xs text-foreground/60">
+                            {item.time}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2"
+                          >
                             Start <ArrowRight className="ml-1 h-3 w-3" />
                           </Button>
                         </div>
@@ -420,22 +518,39 @@ export default function ProgressPage() {
               <Card key={achievement.id} className="border-primary/10">
                 <CardContent className="p-6">
                   <div className="flex gap-4">
-                    <div className="p-4 rounded-full bg-primary/10 h-fit">{achievement.icon}</div>
+                    <div className="p-4 rounded-full bg-primary/10 h-fit">
+                      {achievement.icon}
+                    </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-bold text-lg">{achievement.name}</h3>
-                        <Badge variant={achievement.progress === 100 ? "default" : "outline"}>
-                          {achievement.progress === 100 ? "Completed" : "In Progress"}
+                        <h3 className="font-bold text-lg">
+                          {achievement.name}
+                        </h3>
+                        <Badge
+                          variant={
+                            achievement.progress === 100 ? "default" : "outline"
+                          }
+                        >
+                          {achievement.progress === 100
+                            ? "Completed"
+                            : "In Progress"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-foreground/70 mb-4">{achievement.description}</p>
+                      <p className="text-sm text-foreground/70 mb-4">
+                        {achievement.description}
+                      </p>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span>Progress</span>
                           <span>{achievement.progress}%</span>
                         </div>
-                        <Progress value={achievement.progress} className="h-2" />
-                        <div className="text-xs text-foreground/60">{achievement.date}</div>
+                        <Progress
+                          value={achievement.progress}
+                          className="h-2"
+                        />
+                        <div className="text-xs text-foreground/60">
+                          {achievement.date}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -448,7 +563,9 @@ export default function ProgressPage() {
           <Card className="border-primary/10">
             <CardHeader>
               <CardTitle>Upcoming Achievements</CardTitle>
-              <CardDescription>Achievements you're close to unlocking</CardDescription>
+              <CardDescription>
+                Achievements you're close to unlocking
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -467,14 +584,21 @@ export default function ProgressPage() {
                   },
                 ].map((achievement, i) => (
                   <div key={i} className="flex items-center gap-4">
-                    <div className="p-2 rounded-full bg-primary/10">{achievement.icon}</div>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      {achievement.icon}
+                    </div>
                     <div className="flex-1">
                       <div className="flex justify-between mb-1">
                         <h4 className="font-medium">{achievement.name}</h4>
                         <span className="text-sm">{achievement.progress}%</span>
                       </div>
-                      <p className="text-xs text-foreground/70 mb-2">{achievement.description}</p>
-                      <Progress value={achievement.progress} className="h-1.5" />
+                      <p className="text-xs text-foreground/70 mb-2">
+                        {achievement.description}
+                      </p>
+                      <Progress
+                        value={achievement.progress}
+                        className="h-1.5"
+                      />
                     </div>
                   </div>
                 ))}
@@ -484,5 +608,5 @@ export default function ProgressPage() {
         </TabsContent>
       </Tabs>
     </motion.div>
-  )
+  );
 }

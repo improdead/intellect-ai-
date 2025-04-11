@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
   Card,
   CardContent,
@@ -20,12 +20,18 @@ import {
   Brain,
   Clock,
   Sparkles,
+  Plus,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import { toast } from "sonner";
 import UserSync from "./user-sync";
 import { clientDataService, SubjectWithIcon } from "@/lib/data-service";
 import { getSubjectIcon, getSubjectColor } from "@/components/subject-icon";
+import { SubjectForm } from "@/components/forms/subject-form";
+import { CreateModal } from "@/components/ui/create-modal";
+import { SubjectSkeleton } from "@/components/ui/skeleton-loader";
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -79,43 +85,51 @@ export default function DashboardPage() {
   // State for subjects
   const [subjects, setSubjects] = useState<SubjectWithIcon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Fetch subjects from the database
-  useEffect(() => {
-    async function fetchSubjects() {
-      if (!user) return;
+  const fetchSubjects = async () => {
+    if (!user) return;
 
-      try {
-        setIsLoading(true);
-        // Fetch subjects with user progress
-        const subjectsData = await clientDataService.getUserSubjectsProgress(
-          user.sub as string
-        );
+    try {
+      setIsLoading(true);
+      // Fetch subjects with user progress
+      const subjectsData = await clientDataService.getUserSubjectsProgress(
+        user.sub as string
+      );
 
-        // Add icon and color to each subject
-        const subjectsWithIcons = subjectsData.map((subject) => ({
-          ...subject,
-          // Use title or name, whichever is available
-          icon: getSubjectIcon(subject.title || subject.name || "Default"),
-          color: getSubjectColor(subject.title || subject.name || "Default"),
-          // If no progress data, default to 0
-          progress: subject.progress || 0,
-          // If no current topic, default to 'Not started'
-          currentTopic: subject.currentTopic || "Not started",
-        }));
+      // Add icon and color to each subject
+      const subjectsWithIcons = subjectsData.map((subject) => ({
+        ...subject,
+        // Use title or name, whichever is available
+        icon: getSubjectIcon(subject.title || subject.name || "Default"),
+        color: getSubjectColor(subject.title || subject.name || "Default"),
+        // If no progress data, default to 0
+        progress: subject.progress || 0,
+        // If no current topic, default to 'Not started'
+        currentTopic: subject.currentTopic || "Not started",
+      }));
 
-        setSubjects(subjectsWithIcons);
-      } catch (error) {
-        console.error("Error fetching subjects:", error);
-        // If there's an error, use empty array
-        setSubjects([]);
-      } finally {
-        setIsLoading(false);
-      }
+      setSubjects(subjectsWithIcons);
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
+      toast.error("Failed to load subjects. Please try again.");
+      // If there's an error, use empty array
+      setSubjects([]);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchSubjects();
   }, [user]);
+
+  const handleCreateSubjectSuccess = (newSubject: SubjectWithIcon) => {
+    toast.success(`Subject "${newSubject.name}" created successfully!`);
+    setIsCreateModalOpen(false);
+    fetchSubjects(); // Refresh the subjects list
+  };
 
   return (
     <>
@@ -255,6 +269,17 @@ export default function DashboardPage() {
           transition={{ duration: 0.5 }}
           className="flex flex-col gap-5 px-6 max-w-3xl mx-auto"
         >
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xl font-semibold">Your Subjects</h2>
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-1"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Subject</span>
+            </Button>
+          </div>
           {isLoading && (
             // Loading skeleton
             <>
@@ -360,16 +385,17 @@ export default function DashboardPage() {
               className="w-full text-center py-8"
             >
               <p className="text-muted-foreground">
-                No subjects found in the database. Please run the seed script to
-                add sample data.
+                No subjects found in the database. Create your first subject to
+                get started.
               </p>
-              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg text-amber-800 dark:text-amber-200 text-sm">
-                <p className="font-medium">Developer Note:</p>
-                <p className="mt-1">
-                  To add sample data, run the SQL script in{" "}
-                  <code>scripts/seed-data.sql</code> in your database SQL
-                  editor.
-                </p>
+              <div className="mt-4">
+                <Button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create First Subject</span>
+                </Button>
               </div>
             </motion.div>
           )}
@@ -531,6 +557,18 @@ export default function DashboardPage() {
           <p>© 2023 Intellect Learning Platform. All rights reserved.</p>
         </motion.div>
       </div>
+
+      {/* Create Subject Modal */}
+      <CreateModal
+        title="Create New Subject"
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      >
+        <SubjectForm
+          onSuccess={handleCreateSubjectSuccess}
+          onCancel={() => setIsCreateModalOpen(false)}
+        />
+      </CreateModal>
     </>
   );
 }
