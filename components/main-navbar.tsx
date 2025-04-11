@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Sparkles, ArrowRight } from "lucide-react"
+import { Sparkles, ArrowRight } from "lucide-react" // Re-add Sparkles import
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function MainNavbar() {
@@ -22,7 +22,7 @@ export function MainNavbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
-          <span className="font-bold text-xl">Intellect</span>
+          <span className="font-bold text-xl">intelect</span>
         </Link>
 
         {/* Navigation */}

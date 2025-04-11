@@ -63,7 +63,7 @@ export default function DashboardLayout({
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Chat", href: "/dashboard/chat", icon: MessageSquare },
+    { name: "intelect", href: "/dashboard/intelect", icon: MessageSquare },
     { name: "Quiz", href: "/dashboard/quiz", icon: Brain },
     { name: "Research", href: "/dashboard/research", icon: BookOpen },
     { name: "Progress", href: "/dashboard/progress", icon: BarChart },
@@ -123,7 +123,7 @@ export default function DashboardLayout({
                   />
                 </div>
                 <span className="text-lg font-bold group-hover:text-primary transition-colors duration-300">
-                  Intellect
+                  intelect
                 </span>
               </Link>
               {isMobile && (

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
-import { Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react" // Re-add Sparkles import
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function SiteNavbar() {
@@ -23,7 +23,7 @@ export default function SiteNavbar() {
       <div className="container flex items-center justify-between py-2">
         <Link href="/" className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
-          <span className="font-bold">Intellect</span>
+          <span className="font-bold">intelect</span>
         </Link>
         <div className="flex items-center gap-4">
           <nav className="hidden md:flex items-center gap-6">

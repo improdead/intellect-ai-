@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Sparkles, ArrowRight } from "lucide-react"
+import { Sparkles, ArrowRight } from "lucide-react" // Re-add Sparkles import
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function DockHeader() {

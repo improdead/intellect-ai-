@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 
-export default function ChatPage() {
+export default function IntelectPage() {
   const [useThinkingModel, setUseThinkingModel] = useState(false);
 
   const handleToggleChange = (checked: boolean) => {
