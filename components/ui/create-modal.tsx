@@ -4,7 +4,12 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CreateModalProps {
   title: string;
@@ -13,11 +18,16 @@ interface CreateModalProps {
   children: React.ReactNode;
 }
 
-export function CreateModal({ title, isOpen, onClose, children }: CreateModalProps) {
+export function CreateModal({
+  title,
+  isOpen,
+  onClose,
+  children,
+}: CreateModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-2">
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-auto max-h-[90vh]">
+        <DialogHeader className="px-6 pt-6 pb-2 sticky top-0 bg-background z-10">
           <div className="flex items-center justify-between">
             <DialogTitle>{title}</DialogTitle>
             <Button

@@ -12,6 +12,7 @@ export interface ResearchTopic {
   progress: number;
   created_at: string;
   updated_at: string;
+  chat_id?: string; // Associated chat history ID
   icon?: any; // For client-side icon component
   resourceCount?: number; // Count of resources
 }
@@ -75,6 +76,7 @@ export const researchService = {
       title: string;
       description?: string;
       subject_id?: string;
+      chat_id?: string;
     }
   ): Promise<ResearchTopic | null> {
     try {
@@ -88,6 +90,7 @@ export const researchService = {
           title: data.title,
           description: data.description || "",
           subject_id: data.subject_id,
+          chat_id: data.chat_id,
           progress: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -96,7 +99,10 @@ export const researchService = {
         .single();
 
       if (error) {
-        console.error("Error creating research topic:", error);
+        console.error(
+          "Error creating research topic:",
+          JSON.stringify(error, null, 2)
+        );
         return null;
       }
 
@@ -105,7 +111,10 @@ export const researchService = {
         resourceCount: 0,
       };
     } catch (error) {
-      console.error("Error in createResearchTopic:", error);
+      console.error(
+        "Error in createResearchTopic:",
+        JSON.stringify(error, null, 2)
+      );
       return null;
     }
   },
@@ -118,6 +127,7 @@ export const researchService = {
       description?: string;
       progress?: number;
       subject_id?: string;
+      chat_id?: string;
     }
   ): Promise<boolean> {
     try {
@@ -338,6 +348,169 @@ export const researchService = {
     } catch (error) {
       console.error("Error in searchResources:", error);
       return [];
+    }
+  },
+
+  // Get a research topic by ID
+  async getResearchTopic(topicId: string): Promise<ResearchTopic | null> {
+    try {
+      console.log(`\n=== getResearchTopic Debug ===`);
+      console.log(`Attempting to get research topic with ID: ${topicId}`);
+
+      const supabase = getSupabaseClient();
+
+      if (!supabase) {
+        console.error(
+          "Supabase client initialization failed in getResearchTopic"
+        );
+        return null;
+      }
+
+      // First try to get the topic directly by ID
+      console.log(`Fetching research topic with ID: ${topicId}`);
+      let { data, error } = await supabase
+        .from("research_topics")
+        .select("*")
+        .eq("id", topicId)
+        .maybeSingle();
+
+      if (error) {
+        console.error(`Error fetching research topic by ID:`, error);
+        return null;
+      }
+
+      // If not found by ID, try to find by chat_id
+      if (!data) {
+        console.log(`No topic found with ID ${topicId}, trying as chat_id...`);
+        const { data: topicByChat, error: chatError } = await supabase
+          .from("research_topics")
+          .select("*")
+          .eq("chat_id", topicId)
+          .maybeSingle();
+
+        if (chatError) {
+          console.error(`Error fetching research topic by chat_id:`, chatError);
+          return null;
+        }
+
+        data = topicByChat;
+      }
+
+      if (!data) {
+        console.warn(`No research topic found with ID or chat_id: ${topicId}`);
+        return null;
+      }
+
+      console.log(`✅ Found research topic:`, {
+        id: data.id,
+        title: data.title,
+      });
+
+      // Get resource count
+      const { data: resourceData, error: resourceError } = await supabase
+        .from("research_resources")
+        .select("id")
+        .eq("topic_id", data.id);
+
+      const resourceCount = resourceError ? 0 : resourceData?.length || 0;
+
+      return {
+        ...data,
+        resourceCount,
+      };
+    } catch (error) {
+      console.error(`Exception in getResearchTopic for ${topicId}:`, error);
+      if (error instanceof Error) {
+        console.error(
+          `Error name: ${error.name}, message: ${error.message}, stack: ${error.stack}`
+        );
+      } else {
+        console.error(`Non-Error exception: ${JSON.stringify(error)}`);
+      }
+      return null;
+    }
+  },
+
+  // Get a research topic by chat ID
+  async getResearchTopicByChatId(
+    chatId: string
+  ): Promise<ResearchTopic | null> {
+    try {
+      console.log(`\n=== getResearchTopicByChatId Debug ===`);
+      console.log(`Attempting to get research topic with chat_id: ${chatId}`);
+      console.log(`chatId type:`, typeof chatId); // Log the type to ensure it's a string
+
+      const supabase = getSupabaseClient();
+
+      if (!supabase) {
+        console.error(
+          "Supabase client initialization failed in getResearchTopicByChatId"
+        );
+        return null;
+      }
+
+      // First, check if the chat exists
+      try {
+        console.log(`Checking if chat with ID ${chatId} exists...`);
+        const { data: chatData, error: chatError } = await supabase
+          .from("chat_history")
+          .select("id")
+          .eq("id", chatId)
+          .maybeSingle();
+
+        if (chatError) {
+          console.error(`Error verifying chat existence:`, chatError);
+        } else if (!chatData) {
+          console.warn(`No chat found with ID ${chatId}`);
+        } else {
+          console.log(`Chat with ID ${chatId} exists.`);
+        }
+      } catch (chatCheckError) {
+        console.error("Error checking chat existence:", chatCheckError);
+      }
+
+      // Now attempt to fetch the research topic (exact match)
+      console.log(`Fetching research topic using chat_id: ${chatId}`);
+      const { data, error } = await supabase
+        .from("research_topics")
+        .select("*")
+        .eq("chat_id", chatId)
+        .limit(1);
+
+      console.log("Supabase query result:", data, error); // Log the data and error from the query
+
+      if (error) {
+        console.error(`Error fetching research topic by chat_id:`, error);
+        return null;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn(`No research topic found with chat_id: ${chatId}`);
+        return null;
+      }
+
+      console.log(`✅ Found research topic for chat_id ${chatId}:`, {
+        id: data[0].id,
+        title: data[0].title,
+      });
+
+      return {
+        ...data[0],
+        resourceCount: 0,
+      };
+    } catch (error) {
+      console.error(
+        `Exception in getResearchTopicByChatId for ${chatId}:`,
+        error
+      );
+      if (error instanceof Error) {
+        console.error(
+          `Error name: ${error.name}, message: ${error.message}, stack: ${error.stack}`
+        );
+      } else {
+        console.error(`Non-Error exception: ${JSON.stringify(error)}`);
+      }
+      return null;
     }
   },
 };

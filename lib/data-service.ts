@@ -542,19 +542,9 @@ export const clientDataService = {
       if (error) {
         console.error("Error creating chat history:", error);
 
-        // Create a fallback chat history object for testing
-        if (process.env.NODE_ENV === "development") {
-          console.log("Using fallback chat history in development mode");
-          return {
-            id: `fallback-${Date.now()}`,
-            user_id: chatData.user_id,
-            title: chatData.title,
-            subject_id: chatData.subject_id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-        }
-
+        // Don't use fallback in production as it causes UUID validation errors
+        // Instead, try to create the chat history directly in the database
+        console.error("Error details:", JSON.stringify(error));
         return null;
       }
 
@@ -588,14 +578,10 @@ export const clientDataService = {
 
       // Check if chat_id is a fallback ID (for development mode)
       if (messageData.chat_id?.startsWith("fallback-")) {
-        console.log("Using fallback chat message for fallback chat_id");
-        return {
-          id: `fallback-msg-${Date.now()}`,
-          chat_id: messageData.chat_id,
-          role: messageData.role,
-          content: messageData.content,
-          created_at: new Date().toISOString(),
-        };
+        console.error(
+          "Cannot use fallback chat_id with Supabase - UUID validation will fail"
+        );
+        return null;
       }
 
       // Attempt to insert the chat message
@@ -613,17 +599,8 @@ export const clientDataService = {
       if (error) {
         console.error("Error creating chat message:", error);
 
-        // Create a fallback chat message object for testing
-        if (process.env.NODE_ENV === "development") {
-          console.log("Using fallback chat message in development mode");
-          return {
-            id: `fallback-msg-${Date.now()}`,
-            chat_id: messageData.chat_id,
-            role: messageData.role,
-            content: messageData.content,
-            created_at: new Date().toISOString(),
-          };
-        }
+        // Don't use fallback in production as it causes UUID validation errors
+        console.error("Error details:", JSON.stringify(error));
 
         return null;
       }
