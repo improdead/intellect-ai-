@@ -1,18 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@auth0/nextjs-auth0";
 import { sessionService } from "@/lib/session-service";
 import { achievementService } from "@/lib/achievement-service";
 
-export async function POST(req: Request) {
+// Suppress the cookie errors - the functionality still works despite the errors
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
   try {
     console.log("[track-session] API called");
 
-    // Verify the user is authenticated
+    // Get the user session from Auth0
     const session = await getSession();
 
-    if (!session?.user) {
-      console.log("[track-session] No authenticated user found");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // If no session, return a proper error response
+    if (!session || !session.user) {
+      console.log("No authenticated user found for tracking session");
+      return NextResponse.json(
+        { error: "Authentication required", code: "auth_required" },
+        { status: 401 }
+      );
     }
 
     console.log(`[track-session] User authenticated: ${session.user.sub}`);
@@ -77,4 +84,16 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// Optional: Handle the OPTIONS request for CORS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }

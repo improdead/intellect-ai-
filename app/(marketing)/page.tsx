@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, useAnimation, LayoutGroup } from "framer-motion";
+import {
+  motion,
+  useAnimation,
+  LayoutGroup,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -32,7 +38,21 @@ import { useRouter } from "next/navigation";
 import StackedCards from "@/components/stacked-cards";
 import VideoPreview from "@/components/video-preview";
 import TextRotate from "@/components/text/text-rotate";
-import { BentoGrid } from "@/components/bento-grid";
+import { BentoGrid, BentoGridItem } from "@/components/bento-grid";
+import HeroText, { AnimatedTextCharacter } from "@/components/hero-text";
+import Card3D from "@/components/3d-card";
+import Spotlight from "@/components/spotlight";
+import TextSpotlight, { MovingGradientText } from "@/components/text-spotlight";
+import ScrollRevealSection, {
+  ParallaxSection,
+} from "@/components/scroll-section";
+import ParallaxScroll, { FloatingElement } from "@/components/parallax-scroll";
+import { CardStack } from "@/components/card-stack";
+import GlareCard from "@/components/glare-card";
+import { PerspectiveCard } from "@/components/perspective-cards";
+import TypingEffect from "@/components/typing-effect";
+import InfiniteMovingCards from "@/components/infinite-moving-cards";
+import MagnetButton from "@/components/magnet-button";
 
 // Dynamically import the background component with no SSR to avoid hydration issues
 const WavyParticlesBackground = dynamic(
@@ -48,6 +68,13 @@ export default function Home() {
   const controls = useAnimation();
   const backgroundRef = useRef<HTMLDivElement>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const cursorRef = useRef<HTMLDivElement>(null);
+
+  // Scroll animations
+  const { scrollYProgress } = useScroll();
+  const headerOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
+  const headerY = useTransform(scrollYProgress, [0, 0.1], [0, -50]);
 
   useEffect(() => {
     setMounted(true);
@@ -69,9 +96,30 @@ export default function Home() {
       }
     };
 
+    // Custom cursor tracking
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+
+    // Enable smooth scrolling
+    document.documentElement.style.scrollBehavior = "smooth";
+
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("mousemove", handleMouseMove);
+      document.documentElement.style.scrollBehavior = "";
+    };
   }, [controls]);
+
+  // Update cursor position with smooth animation
+  useEffect(() => {
+    if (cursorRef.current) {
+      cursorRef.current.style.transform = `translate(${mousePosition.x}px, ${mousePosition.y}px)`;
+    }
+  }, [mousePosition]);
 
   const handleGetStarted = () => {
     setIsButtonClicked(true);
@@ -132,88 +180,162 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
+      {/* Custom cursor */}
+      <div
+        ref={cursorRef}
+        className="fixed w-8 h-8 bg-primary/20 rounded-full pointer-events-none z-50 border border-primary/30 mix-blend-difference"
+        style={{
+          top: -16,
+          left: -16,
+          transition: "transform 0.15s ease-out",
+        }}
+      />
+
       {/* Wavy particles background */}
       <WavyParticlesBackground />
 
-      <main className="relative pt-16 pb-20">
+      {/* Floating elements */}
+      <div className="fixed inset-0 pointer-events-none z-10 overflow-hidden">
+        <FloatingElement
+          xFactor={30}
+          yFactor={20}
+          duration={6}
+          className="absolute top-[15%] right-[10%]"
+        >
+          <div className="w-32 h-32 rounded-full bg-purple-500/10 blur-xl" />
+        </FloatingElement>
+        <FloatingElement
+          xFactor={25}
+          yFactor={35}
+          duration={8}
+          delay={1}
+          className="absolute top-[65%] left-[15%]"
+        >
+          <div className="w-40 h-40 rounded-full bg-blue-500/10 blur-xl" />
+        </FloatingElement>
+        <FloatingElement
+          xFactor={20}
+          yFactor={15}
+          duration={7}
+          delay={2}
+          className="absolute bottom-[20%] right-[20%]"
+        >
+          <div className="w-24 h-24 rounded-full bg-indigo-500/10 blur-xl" />
+        </FloatingElement>
+      </div>
+
+      <main className="relative pt-12 pb-20">
         <section className="container flex flex-col items-center justify-center text-center space-y-8 py-12 min-h-[90vh]">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="max-w-3xl mx-auto space-y-4"
-          >
-            <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary font-medium text-sm mb-4 backdrop-blur-sm font-robit-regular">
-              Your ultimate learning companion
-            </div>
+          <Spotlight>
+            <ScrollRevealSection
+              animation="fade"
+              className="max-w-4xl mx-auto space-y-4"
+            >
+              <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary font-medium text-sm mb-6 backdrop-blur-sm font-robit-regular">
+                Your ultimate learning companion
+              </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight">
-              <span className="font-robit-bold">Learn anything with</span>
-              <br />
-              <LayoutGroup>
-                <motion.div
-                  className="flex whitespace-pre justify-center mt-2 mb-0"
-                  layout
-                >
-                  <TextRotate
-                    texts={[
-                      "AI-powered",
-                      "interactive",
-                      "personalized",
-                      "immersive",
-                      "adaptive",
-                      "engaging",
-                    ]}
-                    mainClassName="text-primary px-2 sm:px-2 md:px-3 bg-gradient-to-r from-violet-600/20 to-indigo-600/20 overflow-hidden py-0.5 sm:py-1 md:py-2 justify-center rounded-lg"
-                    staggerFrom="last"
-                    initial={{ y: "100%" }}
-                    animate={{ y: 0 }}
-                    exit={{ y: "-120%" }}
-                    staggerDuration={0.025}
-                    splitLevelClassName="overflow-hidden pb-0.5 sm:pb-1 md:pb-1"
-                    transition={{ type: "spring", damping: 30, stiffness: 400 }}
-                    rotationInterval={2000}
-                  />
-                </motion.div>
-              </LayoutGroup>
-              <span className="font-robit-medium">conversations</span>
-            </h1>
+              <div className="text-center mb-4">
+                <HeroText
+                  text="Learn anything with"
+                  fontSize="7xl"
+                  className="text-5xl md:text-7xl font-bold tracking-tight leading-tight text-white"
+                />
+              </div>
 
-            <p className="text-xl text-foreground/80 mt-6 max-w-2xl mx-auto">
-              Chat with an AI tutor that creates interactive visualizations and
-              explanations in real-time to help you understand complex concepts
-              instantly.
-            </p>
-          </motion.div>
+              <div className="relative h-24 md:h-32 mb-4">
+                <LayoutGroup>
+                  <motion.div
+                    className="flex whitespace-pre justify-center"
+                    layout
+                  >
+                    <TextRotate
+                      texts={[
+                        "AI-powered",
+                        "interactive",
+                        "personalized",
+                        "immersive",
+                        "adaptive",
+                        "engaging",
+                      ]}
+                      mainClassName="text-primary px-4 py-3 bg-gradient-to-r from-violet-600/30 to-indigo-600/30 overflow-hidden justify-center rounded-lg text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight"
+                      staggerFrom="last"
+                      initial={{ y: "100%" }}
+                      animate={{ y: 0 }}
+                      exit={{ y: "-120%" }}
+                      staggerDuration={0.025}
+                      splitLevelClassName="overflow-hidden pb-0.5 sm:pb-1 md:pb-1"
+                      transition={{
+                        type: "spring",
+                        damping: 30,
+                        stiffness: 400,
+                      }}
+                      rotationInterval={2000}
+                    />
+                  </motion.div>
+                </LayoutGroup>
+              </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
+              <div className="text-5xl md:text-7xl font-bold tracking-tight leading-tight">
+                <TypingEffect
+                  words={[
+                    "conversations",
+                    "learning",
+                    "exploration",
+                    "discovery",
+                  ]}
+                  className="font-robit-medium"
+                  typingSpeed={80}
+                  deletingSpeed={40}
+                  delayBetweenWords={2000}
+                />
+              </div>
+
+              <ParallaxSection speed={2} direction="up" className="mt-6">
+                <p className="text-xl text-foreground/80 max-w-2xl mx-auto">
+                  Chat with an AI tutor that creates interactive visualizations
+                  and explanations in real-time to help you understand complex
+                  concepts instantly.
+                </p>
+              </ParallaxSection>
+            </ScrollRevealSection>
+          </Spotlight>
+
+          <ScrollRevealSection
+            animation="rise"
+            delay={0.4}
             className="flex flex-col sm:flex-row gap-4 mt-8"
           >
-            <Button
-              size="lg"
+            <MagnetButton
               onClick={handleGetStarted}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg group transition-all duration-300"
+              size="lg"
+              glowOnHover={true}
+              magneticIntensity={0.3}
+              className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg"
             >
               <span className="flex items-center gap-2">
                 <span className="font-robit-bold">Start Chatting</span>
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </span>
-            </Button>
+            </MagnetButton>
 
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-primary/20 hover:bg-primary/5 transition-all duration-300"
-              asChild
-            >
-              <Link href="#how-it-works">
+            <ScrollRevealSection animation="fade" delay={0.4}>
+              <MagnetButton
+                variant="outlined"
+                size="lg"
+                magneticIntensity={0.2}
+                className="border-primary/20 hover:bg-primary/5"
+                onClick={() => {
+                  const element = document.getElementById("how-it-works");
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+              >
                 <span className="font-robit-medium">See how it works</span>
-              </Link>
-            </Button>
-          </motion.div>
+              </MagnetButton>
+            </ScrollRevealSection>
+          </ScrollRevealSection>
 
           <div className="relative mt-16 w-full max-w-5xl mx-auto">
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-3xl blur-3xl -z-10"></div>
@@ -346,382 +468,498 @@ export default function Home() {
           />
         </section>
 
-        <section id="features" className="pt-20 pb-10 container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl md:text-5xl font-bold">
-              Why choose Intelect?
-            </h2>
-            <p className="text-foreground/70 mt-4 max-w-2xl mx-auto">
-              Our AI chatbot combines cutting-edge AI with interactive
-              visualizations to help you master any subject through
-              conversation.
-            </p>
-          </motion.div>
+        <section id="features" className="py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background"></div>
 
-          <StackedCards
-            cards={[
-              {
-                id: 1,
-                title: "AI-Powered Conversations",
-                description:
-                  "Our advanced AI understands your questions and creates personalized explanations tailored to your needs.",
-                icon: <Brain className="h-6 w-6 text-white" />,
-                color: "from-purple-600 to-indigo-700",
-              },
-              {
-                id: 2,
-                title: "Interactive Visualizations",
-                description:
-                  "Visualize complex concepts through dynamic, interactive visualizations generated in real-time during your chat.",
-                icon: <Lightbulb className="h-6 w-6 text-white" />,
-                color: "from-blue-600 to-cyan-700",
-              },
-              {
-                id: 3,
-                title: "Instant Answers",
-                description:
-                  "Get immediate, accurate responses to your questions with detailed explanations that adapt to your understanding.",
-                icon: <Zap className="h-6 w-6 text-white" />,
-                color: "from-indigo-600 to-purple-700",
-              },
-              {
-                id: 4,
-                title: "Track Learning Progress",
-                description:
-                  "Our AI remembers your conversations and builds on previous discussions to create a personalized learning journey.",
-                icon: <BarChart className="h-6 w-6 text-white" />,
-                color: "from-cyan-600 to-blue-700",
-              },
-              {
-                id: 5,
-                title: "Natural Conversations",
-                description:
-                  "Chat naturally as if you're talking to a human tutor, with the ability to ask follow-up questions and explore topics deeply.",
-                icon: <MessageSquare className="h-6 w-6 text-white" />,
-                color: "from-violet-600 to-purple-700",
-              },
-              {
-                id: 6,
-                title: "Multi-Subject Expertise",
-                description:
-                  "From physics to philosophy, our AI chatbot has deep knowledge across a wide range of academic and practical subjects.",
-                icon: <Users className="h-6 w-6 text-white" />,
-                color: "from-purple-600 to-pink-700",
-              },
-            ]}
-          />
+          <div className="container relative z-10">
+            <ScrollRevealSection animation="fade" className="text-center mb-16">
+              <HeroText
+                text="Revolutionary learning features"
+                fontSize="5xl"
+                className="mb-4"
+              />
+              <p className="text-xl text-foreground/70 max-w-2xl mx-auto">
+                Our platform combines cutting-edge AI with interactive
+                experiences to make learning intuitive and engaging
+              </p>
+            </ScrollRevealSection>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
+              {featureCards.map((card, index) => (
+                <ScrollRevealSection
+                  key={index}
+                  animation="rise"
+                  delay={index * 0.1}
+                  className="h-full"
+                >
+                  <PerspectiveCard
+                    className="h-full"
+                    backgroundImage={card.image}
+                    rotationIntensity={12}
+                  >
+                    <div
+                      className={`${card.bgColor} p-8 rounded-xl text-white h-full bg-opacity-80 backdrop-blur-sm`}
+                    >
+                      <h3 className="text-2xl font-bold mb-3">{card.title}</h3>
+                      <p className="text-white/90 mb-6">{card.description}</p>
+
+                      <Button
+                        variant="outline"
+                        className="border-white/30 text-white hover:bg-white/20 mt-auto"
+                        asChild
+                      >
+                        <Link
+                          href={`/features/${card.title
+                            .toLowerCase()
+                            .replace(/\s+/g, "-")}`}
+                        >
+                          <span className="flex items-center">
+                            Learn more
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </span>
+                        </Link>
+                      </Button>
+                    </div>
+                  </PerspectiveCard>
+                </ScrollRevealSection>
+              ))}
+            </div>
+          </div>
         </section>
 
-        <section
-          id="subjects"
-          className="pt-10 pb-20 bg-gradient-to-b from-background to-primary/5"
-        >
-          <div className="container">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              viewport={{ once: true }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-3xl md:text-5xl font-bold">
-                <span className="font-robit-bold">Explore Topics</span>
-              </h2>
-              <p className="text-foreground/70 mt-4 max-w-2xl mx-auto">
-                Chat about any subject with our interactive AI learning
-                companion
-              </p>
-            </motion.div>
+        {/* Subjects section */}
+        <section id="subjects" className="py-24 container">
+          <ScrollRevealSection animation="fade" className="text-center mb-12">
+            <HeroText
+              text="Learn across subjects"
+              fontSize="5xl"
+              className="mb-4"
+            />
+            <p className="text-xl text-foreground/70 max-w-2xl mx-auto">
+              From science and math to history and languages, our AI tutor can
+              help you master any subject
+            </p>
+          </ScrollRevealSection>
 
-            <Tabs defaultValue="physics" className="w-full">
-              <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-12">
-                <TabsTrigger value="physics">Physics</TabsTrigger>
-                <TabsTrigger value="math">Mathematics</TabsTrigger>
-                <TabsTrigger value="chemistry">Chemistry</TabsTrigger>
-                <TabsTrigger value="biology">Biology</TabsTrigger>
-              </TabsList>
+          <div className="mt-16">
+            <Tabs defaultValue="science" className="w-full">
+              <ScrollRevealSection
+                animation="slide"
+                direction="up"
+                className="flex justify-center mb-8"
+              >
+                <TabsList className="bg-background/50 border border-primary/10 p-1 rounded-full">
+                  <TabsTrigger value="science" className="rounded-full px-6">
+                    Science
+                  </TabsTrigger>
+                  <TabsTrigger value="math" className="rounded-full px-6">
+                    Math
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="rounded-full px-6">
+                    History
+                  </TabsTrigger>
+                  <TabsTrigger value="languages" className="rounded-full px-6">
+                    Languages
+                  </TabsTrigger>
+                  <TabsTrigger value="coding" className="rounded-full px-6">
+                    Coding
+                  </TabsTrigger>
+                </TabsList>
+              </ScrollRevealSection>
 
-              <TabsContent value="physics">
-                <SubjectShowcase
-                  title="Physics"
-                  description="Chat about the fundamental laws that govern the universe"
-                  topics={[
-                    "Newton's Laws of Motion",
-                    "Thermodynamics",
-                    "Electromagnetism",
-                    "Quantum Mechanics",
-                    "Relativity",
-                    "Fluid Dynamics",
-                  ]}
-                />
-              </TabsContent>
+              <div className="mt-8">
+                <TabsContent value="science">
+                  <ParallaxSection direction="up" speed={2}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <GlareCard
+                        className="p-8 h-full"
+                        glareSize={300}
+                        glareColor="rgba(120, 80, 255, 0.3)"
+                        borderColor="rgba(120, 80, 255, 0.2)"
+                      >
+                        <h3 className="text-2xl font-bold mb-4">Biology</h3>
+                        <p className="text-foreground/70 mb-6">
+                          From cellular biology to ecosystems, learn how living
+                          organisms function and interact with their
+                          environment.
+                        </p>
+                        <div className="flex gap-2 flex-wrap mt-4">
+                          {["Cells", "Genetics", "Anatomy", "Ecology"].map(
+                            (tag) => (
+                              <span
+                                key={tag}
+                                className="px-3 py-1 bg-primary/10 rounded-full text-sm text-primary"
+                              >
+                                {tag}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </GlareCard>
 
-              <TabsContent value="math">
-                <SubjectShowcase
-                  title="Mathematics"
-                  description="Discuss patterns, structures, and mathematical relationships"
-                  topics={[
-                    "Calculus",
-                    "Linear Algebra",
-                    "Statistics & Probability",
-                    "Number Theory",
-                    "Geometry",
-                    "Differential Equations",
-                  ]}
-                />
-              </TabsContent>
+                      <GlareCard
+                        className="p-8 h-full"
+                        glareSize={300}
+                        glareColor="rgba(80, 120, 255, 0.3)"
+                        borderColor="rgba(80, 120, 255, 0.2)"
+                      >
+                        <h3 className="text-2xl font-bold mb-4">Chemistry</h3>
+                        <p className="text-foreground/70 mb-6">
+                          Explore the composition, structure, properties, and
+                          reactions of substances with interactive models.
+                        </p>
+                        <div className="flex gap-2 flex-wrap mt-4">
+                          {[
+                            "Elements",
+                            "Compounds",
+                            "Reactions",
+                            "Organic Chemistry",
+                          ].map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-3 py-1 bg-primary/10 rounded-full text-sm text-primary"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </GlareCard>
+                    </div>
+                  </ParallaxSection>
+                </TabsContent>
 
-              <TabsContent value="chemistry">
-                <SubjectShowcase
-                  title="Chemistry"
-                  description="Explore the composition, structure, and properties of matter"
-                  topics={[
-                    "Atomic Structure",
-                    "Chemical Bonding",
-                    "Thermochemistry",
-                    "Organic Chemistry",
-                    "Biochemistry",
-                    "Analytical Chemistry",
-                  ]}
-                />
-              </TabsContent>
+                {/* Other subject tabs would go here */}
+                <TabsContent value="math">
+                  <ParallaxSection direction="up" speed={2}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <GlareCard
+                        className="p-8 h-full"
+                        glareSize={300}
+                        glareColor="rgba(80, 160, 255, 0.3)"
+                        borderColor="rgba(80, 160, 255, 0.2)"
+                        animateGlare={true}
+                        animationDuration={5}
+                      >
+                        <h3 className="text-2xl font-bold mb-4">Calculus</h3>
+                        <p className="text-foreground/70 mb-6">
+                          Master derivatives, integrals, and applications of
+                          calculus with step-by-step explanations and visual
+                          graphs.
+                        </p>
+                        <div className="flex gap-2 flex-wrap mt-4">
+                          {[
+                            "Limits",
+                            "Derivatives",
+                            "Integrals",
+                            "Applications",
+                          ].map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-3 py-1 bg-primary/10 rounded-full text-sm text-primary"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </GlareCard>
 
-              <TabsContent value="biology">
-                <SubjectShowcase
-                  title="Biology"
-                  description="Learn about the living world and the processes that sustain life"
-                  topics={[
-                    "Cell Biology",
-                    "Genetics",
-                    "Evolution",
-                    "Ecology",
-                    "Physiology",
-                    "Molecular Biology",
-                  ]}
-                />
-              </TabsContent>
+                      <GlareCard
+                        className="p-8 h-full"
+                        glareSize={300}
+                        glareColor="rgba(120, 160, 80, 0.3)"
+                        borderColor="rgba(120, 160, 80, 0.2)"
+                        animateGlare={true}
+                        animationDuration={6}
+                      >
+                        <h3 className="text-2xl font-bold mb-4">
+                          Linear Algebra
+                        </h3>
+                        <p className="text-foreground/70 mb-6">
+                          Understand vectors, matrices, and transformations with
+                          interactive 3D visualizations and practical examples.
+                        </p>
+                        <div className="flex gap-2 flex-wrap mt-4">
+                          {[
+                            "Vectors",
+                            "Matrices",
+                            "Eigenvalues",
+                            "Transformations",
+                          ].map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-3 py-1 bg-primary/10 rounded-full text-sm text-primary"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </GlareCard>
+                    </div>
+                  </ParallaxSection>
+                </TabsContent>
+
+                {/* Additional tabs would be similar */}
+              </div>
             </Tabs>
           </div>
         </section>
 
-        <section id="how-it-works" className="py-20 container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-5xl font-bold">How it works</h2>
-            <p className="text-foreground/70 mt-4 max-w-2xl mx-auto">
-              Our AI-powered chatbot makes learning intuitive and engaging
-            </p>
-          </motion.div>
+        {/* Testimonials section */}
+        <section className="py-20 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-blue-500/5"></div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
-            {[
-              {
-                icon: <MessageSquare className="h-12 w-12 text-purple-500" />,
-                title: "Ask Anything",
-                description:
-                  "Type your question in natural language and get instant, personalized explanations from our AI tutor.",
-              },
-              {
-                icon: <Sparkles className="h-12 w-12 text-blue-500" />,
-                title: "See It Visualized",
-                description:
-                  "The AI generates custom interactive visualizations to help you understand complex concepts as you chat.",
-              },
-              {
-                icon: <Zap className="h-12 w-12 text-indigo-500" />,
-                title: "Deepen Understanding",
-                description:
-                  "Ask follow-up questions, request simpler explanations, or dive deeper into any topic in a natural conversation.",
-              },
-            ].map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <Card className="p-8 h-full border-primary/10 bg-background/50 backdrop-blur-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2">
-                  <div className="mb-6 flex justify-center">{item.icon}</div>
-                  <h3 className="text-2xl font-semibold mb-4 text-center">
-                    {item.title}
+          <div className="container relative z-10">
+            <ScrollRevealSection animation="fade" className="text-center mb-16">
+              <HeroText
+                text="Loved by students worldwide"
+                fontSize="5xl"
+                className="mb-4"
+              />
+              <p className="text-xl text-foreground/70 max-w-2xl mx-auto">
+                Join thousands of students who are already learning faster and
+                more effectively with Intellect
+              </p>
+            </ScrollRevealSection>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-16">
+              <div className="flex items-center justify-center">
+                <CardStack
+                  items={[
+                    {
+                      id: 1,
+                      name: "Sarah Johnson",
+                      designation: "Physics Student",
+                      content: (
+                        <p>
+                          "Intellect helped me understand quantum mechanics in
+                          ways my textbooks never could. The visualizations make
+                          complex concepts so much clearer!"
+                        </p>
+                      ),
+                    },
+                    {
+                      id: 2,
+                      name: "Michael Lee",
+                      designation: "Software Engineer",
+                      content: (
+                        <p>
+                          "As someone learning machine learning, having an AI
+                          that can explain algorithms visually has been a
+                          game-changer. I'm learning twice as fast."
+                        </p>
+                      ),
+                    },
+                    {
+                      id: 3,
+                      name: "Emma Rodriguez",
+                      designation: "Medical Student",
+                      content: (
+                        <p>
+                          "Medical school is intense, but Intellect helps me
+                          organize complex information and understand the
+                          relationships between systems."
+                        </p>
+                      ),
+                    },
+                    {
+                      id: 4,
+                      name: "Tyler Durden",
+                      designation: "Project Manager",
+                      content: (
+                        <p>
+                          "The first rule of effective learning is to use
+                          Intellect. The interactive approach helps me retain
+                          information like never before."
+                        </p>
+                      ),
+                    },
+                    {
+                      id: 5,
+                      name: "Jane Smith",
+                      designation: "High School Teacher",
+                      content: (
+                        <p>
+                          "I recommend Intellect to all my students. It's like
+                          having a personal tutor that's available 24/7 and
+                          explains concepts perfectly."
+                        </p>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+
+              <div className="flex flex-col justify-center space-y-6">
+                <ScrollRevealSection animation="fade" delay={0.2}>
+                  <h3 className="text-2xl font-bold mb-4">
+                    Why students love us
                   </h3>
-                  <p className="text-foreground/70 text-center">
-                    {item.description}
-                  </p>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+                  <ul className="space-y-4">
+                    {[
+                      "Personalized learning experience adapts to your needs",
+                      "Visual explanations make complex topics easy to understand",
+                      "Available 24/7 for learning at your own pace",
+                      "Covers a wide range of subjects and topics",
+                      "Continuous improvement based on student feedback",
+                    ].map((point, index) => (
+                      <motion.li
+                        key={index}
+                        className="flex items-start"
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        viewport={{ once: true }}
+                      >
+                        <Sparkles className="h-5 w-5 text-primary mt-1 mr-2 flex-shrink-0" />
+                        <span>{point}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </ScrollRevealSection>
 
-        <section
-          id="benefits"
-          className="py-20 bg-gradient-to-b from-primary/5 to-background"
-        >
-          <div
-            className="relative h-[620px] w-full overflow-visible"
-            ref={(node) => setContainer(node)}
-          >
-            <div className="absolute inset-0 w-full h-full">
-              {featureCards.map(
-                ({ bgColor, description, image, title }, index) => (
-                  <motion.div
-                    key={index}
-                    className="absolute top-0 left-0 w-full h-full flex items-center justify-center"
-                    initial={{
-                      scale: 0.9,
-                      y: 0,
-                      opacity: 0.5,
-                      zIndex: featureCards.length - index,
-                    }}
-                    animate={{
-                      scale:
-                        index === activeCardIndex
-                          ? 1
-                          : 0.9 - Math.abs(index - activeCardIndex) * 0.05,
-                      y:
-                        index === activeCardIndex
-                          ? 0
-                          : 20 + Math.abs(index - activeCardIndex) * 10,
-                      opacity:
-                        index === activeCardIndex
-                          ? 1
-                          : 0.7 - Math.abs(index - activeCardIndex) * 0.15,
-                      zIndex:
-                        index === activeCardIndex
-                          ? 10
-                          : featureCards.length -
-                            Math.abs(index - activeCardIndex),
-                    }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    <div
-                      className={`${bgColor} flex-col sm:flex-row px-8 py-10 flex w-11/12 max-w-5xl rounded-3xl mx-auto relative cursor-pointer`}
-                      style={{
-                        height: "auto",
-                        minHeight: "300px",
-                        transform: `perspective(1000px) rotateX(${
-                          index === activeCardIndex
-                            ? 0
-                            : Math.abs(index - activeCardIndex) * 1
-                        }deg)`,
-                        boxShadow:
-                          index === activeCardIndex
-                            ? "0 10px 30px rgba(0,0,0,0.2)"
-                            : "0 5px 15px rgba(0,0,0,0.1)",
-                      }}
-                      onClick={() => setActiveCardIndex(index)}
-                    >
-                      <div className="flex-1 flex flex-col justify-center text-white">
-                        <h3 className="font-bold text-2xl mb-5 font-robit-medium">
-                          {title}
-                        </h3>
-                        <p>{description}</p>
-                      </div>
-
-                      <div className="w-full sm:w-1/2 rounded-xl aspect-video relative overflow-hidden mt-6 sm:mt-0">
-                        <Image
-                          src={image || "/placeholder.svg"}
-                          alt={title}
-                          className="object-cover"
-                          fill
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )
-              )}
-            </div>
-
-            {/* Navigation controls */}
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center items-center gap-4 z-20">
-              <div className="flex items-center gap-2 bg-background/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={prevCard}
-                  className="h-8 w-8 rounded-full bg-primary/10 hover:bg-primary/20"
+                <MagnetButton
+                  magneticIntensity={0.3}
+                  glowOnHover={true}
+                  className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg mt-6 self-start"
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Previous card</span>
-                </Button>
-
-                <div className="flex gap-1">
-                  {featureCards.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setActiveCardIndex(index)}
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        index === activeCardIndex
-                          ? "w-6 bg-primary"
-                          : "w-2 bg-primary/30"
-                      }`}
-                      aria-label={`Go to card ${index + 1}`}
-                    />
-                  ))}
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={nextCard}
-                  className="h-8 w-8 rounded-full bg-primary/10 hover:bg-primary/20"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Next card</span>
-                </Button>
+                  <span className="flex items-center">
+                    Join our community
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </span>
+                </MagnetButton>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="py-20 container">
-          <div className="max-w-5xl mx-auto bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-3xl p-12 border border-primary/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl -z-10 transform -translate-x-1/2 translate-y-1/2"></div>
+        {/* CTA section */}
+        <section className="py-32 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-blue-500/10"></div>
 
-            <div className="text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                <span className="font-robit-bold">
-                  Ready to transform your learning experience?
-                </span>
-              </h2>
-              <p className="text-xl text-foreground/70 mb-8 max-w-2xl mx-auto">
-                Join thousands of students who are already learning faster and
-                more effectively with our AI-powered chatbot.
-              </p>
-
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          <Spotlight autoMove={true} className="container max-w-4xl mx-auto">
+            <ScrollRevealSection
+              animation="scale"
+              className="relative z-10 text-center"
+            >
+              <GlareCard
+                className="p-12 rounded-3xl h-full"
+                glareSize={600}
+                glareColor="rgba(120, 80, 255, 0.4)"
+                borderColor="rgba(120, 80, 255, 0.3)"
+                backgroundColor="rgba(10, 10, 20, 0.3)"
+                animateGlare={true}
+                animationDuration={10}
               >
-                <Button
-                  size="lg"
-                  onClick={handleGetStarted}
-                  className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg group transition-all duration-300 text-lg px-8 py-3 h-auto min-h-[60px]"
-                >
-                  <span className="flex items-center gap-2 whitespace-nowrap">
-                    <span className="font-robit-bold">
-                      Start Chatting Today
+                <HeroText
+                  text="Ready to transform your learning?"
+                  fontSize="4xl"
+                  className="mb-8"
+                />
+
+                <p className="text-xl text-foreground/80 mb-8 max-w-xl mx-auto">
+                  Join thousands of students and professionals who are already
+                  learning faster and more effectively with Intellect.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <MagnetButton
+                    size="lg"
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg"
+                    magneticIntensity={0.4}
+                    glowOnHover={true}
+                    onClick={() => router.push("/login?signup=true")}
+                  >
+                    <span className="relative z-10 flex items-center">
+                      Get Started Free
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                     </span>
-                    <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                  </MagnetButton>
+
+                  <MagnetButton
+                    variant="outlined"
+                    size="lg"
+                    className="border-primary/20 hover:bg-primary/5"
+                    magneticIntensity={0.3}
+                    onClick={() => router.push("/pricing")}
+                  >
+                    See pricing plans
+                  </MagnetButton>
+                </div>
+              </GlareCard>
+            </ScrollRevealSection>
+          </Spotlight>
+        </section>
+
+        {/* Partners logos */}
+        <section className="py-16 container">
+          <ScrollRevealSection animation="fade" className="text-center mb-8">
+            <h3 className="text-2xl font-bold mb-2">
+              Trusted by leading institutions
+            </h3>
+            <p className="text-foreground/70">
+              Elite universities and educational platforms rely on our
+              technology
+            </p>
+          </ScrollRevealSection>
+
+          <InfiniteMovingCards
+            items={[
+              <div
+                key="partner-1"
+                className="w-48 h-20 flex items-center justify-center mx-8 opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <div className="bg-primary/20 w-full h-12 rounded-md flex items-center justify-center">
+                  <span className="font-bold text-primary/70">
+                    University X
                   </span>
-                </Button>
-              </motion.div>
-            </div>
-          </div>
+                </div>
+              </div>,
+              <div
+                key="partner-2"
+                className="w-48 h-20 flex items-center justify-center mx-8 opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <div className="bg-primary/20 w-full h-12 rounded-md flex items-center justify-center">
+                  <span className="font-bold text-primary/70">EdTech Co.</span>
+                </div>
+              </div>,
+              <div
+                key="partner-3"
+                className="w-48 h-20 flex items-center justify-center mx-8 opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <div className="bg-primary/20 w-full h-12 rounded-md flex items-center justify-center">
+                  <span className="font-bold text-primary/70">
+                    Learning Inc
+                  </span>
+                </div>
+              </div>,
+              <div
+                key="partner-4"
+                className="w-48 h-20 flex items-center justify-center mx-8 opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <div className="bg-primary/20 w-full h-12 rounded-md flex items-center justify-center">
+                  <span className="font-bold text-primary/70">Academy Z</span>
+                </div>
+              </div>,
+              <div
+                key="partner-5"
+                className="w-48 h-20 flex items-center justify-center mx-8 opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <div className="bg-primary/20 w-full h-12 rounded-md flex items-center justify-center">
+                  <span className="font-bold text-primary/70">College Y</span>
+                </div>
+              </div>,
+              <div
+                key="partner-6"
+                className="w-48 h-20 flex items-center justify-center mx-8 opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <div className="bg-primary/20 w-full h-12 rounded-md flex items-center justify-center">
+                  <span className="font-bold text-primary/70">Tech School</span>
+                </div>
+              </div>,
+            ]}
+            speed={15}
+            containerClassName="py-10"
+          />
         </section>
       </main>
     </div>

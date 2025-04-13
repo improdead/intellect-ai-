@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { 
-  Zap, 
-  Brain, 
-  Sparkles, 
-  Lightbulb, 
-  BookOpen, 
-  Globe, 
-  Code, 
+import {
+  Zap,
+  Brain,
+  Sparkles,
+  Lightbulb,
+  BookOpen,
+  Globe,
+  Code,
   Music,
   Palette,
   Calculator,
@@ -16,47 +16,47 @@ import {
   Dna,
   Leaf,
   Rocket,
-  LucideIcon
-} from 'lucide-react';
+  LucideIcon,
+} from "lucide-react";
 
 // Map of subject titles to icons
 const iconMap: Record<string, LucideIcon> = {
-  'Physics': Zap,
-  'Mathematics': Calculator,
-  'Chemistry': Atom,
-  'Biology': Dna,
-  'Computer Science': Code,
-  'Geography': Globe,
-  'Literature': BookOpen,
-  'Art': Palette,
-  'Music': Music,
-  'Astronomy': Rocket,
-  'Botany': Leaf,
-  'Microbiology': Microscope,
-  'Psychology': Brain,
-  'Philosophy': Lightbulb,
+  Physics: Zap,
+  Mathematics: Calculator,
+  Chemistry: Atom,
+  Biology: Dna,
+  "Computer Science": Code,
+  Geography: Globe,
+  Literature: BookOpen,
+  Art: Palette,
+  Music: Music,
+  Astronomy: Rocket,
+  Botany: Leaf,
+  Microbiology: Microscope,
+  Psychology: Brain,
+  Philosophy: Lightbulb,
   // Default icon for any other subject
-  'default': Sparkles
+  default: Sparkles,
 };
 
 // Map of subject titles to gradient colors
 const colorMap: Record<string, string> = {
-  'Physics': 'from-blue-400 to-cyan-300',
-  'Mathematics': 'from-emerald-400 to-teal-300',
-  'Chemistry': 'from-amber-400 to-yellow-300',
-  'Biology': 'from-rose-400 to-pink-300',
-  'Computer Science': 'from-indigo-400 to-purple-300',
-  'Geography': 'from-green-400 to-emerald-300',
-  'Literature': 'from-orange-400 to-amber-300',
-  'Art': 'from-fuchsia-400 to-pink-300',
-  'Music': 'from-violet-400 to-purple-300',
-  'Astronomy': 'from-blue-500 to-indigo-300',
-  'Botany': 'from-green-500 to-lime-300',
-  'Microbiology': 'from-teal-400 to-cyan-300',
-  'Psychology': 'from-purple-400 to-violet-300',
-  'Philosophy': 'from-amber-500 to-yellow-400',
+  Physics: "#4287f5",
+  Mathematics: "#36b37e",
+  Chemistry: "#f5a142",
+  Biology: "#e85b7c",
+  "Computer Science": "#7855f7",
+  Geography: "#36b37e",
+  Literature: "#f5a142",
+  Art: "#d946ef",
+  Music: "#8b5cf6",
+  Astronomy: "#4361ee",
+  Botany: "#65a30d",
+  Microbiology: "#0d9488",
+  Psychology: "#9333ea",
+  Philosophy: "#f59e0b",
   // Default gradient for any other subject
-  'default': 'from-gray-400 to-slate-300'
+  default: "#64748b",
 };
 
 export function getSubjectIcon(title: string): LucideIcon {
@@ -72,7 +72,7 @@ interface SubjectIconProps {
   className?: string;
 }
 
-export function SubjectIcon({ title, className = '' }: SubjectIconProps) {
+export function SubjectIcon({ title, className = "" }: SubjectIconProps) {
   const Icon = getSubjectIcon(title);
   return <Icon className={className} />;
 }
