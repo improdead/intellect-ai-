@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Send, Brain, User, Phone, Video, Info, Zap } from "lucide-react";
+import { Send, Brain, User, Video, Zap, Sparkles, Loader2, PanelRight, PanelRightClose, Trash2 } from "lucide-react";
+import { BookLoader } from "./book-loader";
 
 // Sample chat messages for demonstration
 const defaultMessages: ChatMessage[] = [
@@ -29,7 +30,6 @@ const defaultMessages: ChatMessage[] = [
 
 interface ChatInterfaceProps {
   initialMessage?: string | null;
-  useThinkingModel?: boolean;
 }
 
 interface ChatMessage {
@@ -39,49 +39,23 @@ interface ChatMessage {
   timestamp: string;
   isNewGroup?: boolean;
   dateMarker?: string;
+  svgData?: string; // SVG content to display
 }
 
-export default function ChatInterface({ initialMessage, useThinkingModel = false }: ChatInterfaceProps) {
+export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; parts: { text: string }[] }[]>([]);
+  const [showDeepDive, setShowDeepDive] = useState(false);
+  const [deepDiveEnabled, setDeepDiveEnabled] = useState(false);
+  const [isFirstMessage, setIsFirstMessage] = useState(messages.length <= 1);
+  const [generatingStatus, setGeneratingStatus] = useState("");
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isSvgLoading, setIsSvgLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Function to call the Gemini API
-  const callGeminiAPI = async (message: string) => {
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message,
-          history: chatHistory,
-          useThinkingModel,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Update chat history for future API calls
-      setChatHistory(prev => [
-        ...prev,
-        { role: 'user', parts: [{ text: message }] },
-        { role: 'model', parts: [{ text: data.responseText }] }
-      ]);
-
-      return data.responseText;
-    } catch (error) {
-      console.error('Error calling Gemini API:', error);
-      return 'Sorry, I encountered an error while processing your request. Please try again.';
-    }
-  };
+  // We no longer need API wrapper functions as we're making direct API calls
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -118,39 +92,99 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
       setMessages((prev) => [...prev, userMessage]);
       setIsTyping(true);
 
-      // Call the Gemini API with a slight delay to show typing indicator
+      // Set loading state
+      setGeneratingStatus("Thinking...");
+
+      // Call the text generation API immediately
       setTimeout(async () => {
         try {
-          // Get response from Gemini API
-          const response = await callGeminiAPI(initialMessage);
+          // First, get just the text response quickly
+          const textResponse = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: initialMessage,
+              history: chatHistory,
+              useThinkingModel: false,  // Normal mode for initial message
+              generateSVG: false, // Don't generate SVG yet for faster text response
+              isFollowUp: false,    // First message
+            }),
+          });
+
+          if (!textResponse.ok) {
+            throw new Error(`API call failed with status: ${textResponse.status}`);
+          }
+
+          const textData = await textResponse.json();
+
+          // Update chat history for future API calls
+          setChatHistory(prev => [
+            ...prev,
+            { role: 'user', parts: [{ text: initialMessage }] },
+            { role: 'model', parts: [{ text: textData.responseText }] }
+          ]);
 
           // Split the response into multiple messages
-          const responseMessages = splitIntoMultipleMessages(response);
+          const responseMessages = splitIntoMultipleMessages(textData.responseText);
 
-          // Send messages one by one with typing indicator between each
-          const sendMessages = async () => {
-            for (let i = 0; i < responseMessages.length; i++) {
-              const aiMessage: ChatMessage = {
-                id: messages.length + 2 + i,
-                role: "assistant",
-                content: responseMessages[i],
-                timestamp: new Date().toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-              };
-
-              setMessages((prev) => [...prev, aiMessage]);
-
-              // If not the last message, show typing indicator before next message
-              if (i < responseMessages.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-              }
-            }
-            setIsTyping(false);
+          // Create the AI message without SVG data first
+          const aiMessage: ChatMessage = {
+            id: messages.length + 2,
+            role: "assistant",
+            content: responseMessages[0], // Just use the first message for now
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            svgData: undefined, // No SVG data yet
           };
 
-          sendMessages();
+          // Add the message to the chat
+          setMessages((prev) => [...prev, aiMessage]);
+          setIsTyping(false);
+
+          // Wait a moment for the text to be visible before starting SVG generation
+          setTimeout(() => {
+            // Show SVG loading animation
+            setIsSvgLoading(true);
+            setSidebarVisible(true);
+            setGeneratingStatus("Generating visualization...");
+
+            // Now get the SVG in a non-blocking way
+            fetch('/api/svg', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                prompt: initialMessage,
+              }),
+            })
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              throw new Error('SVG generation failed');
+            })
+            .then(svgResult => {
+              // Update the message with SVG data
+              setMessages(prev => prev.map(msg =>
+                msg.id === aiMessage.id
+                  ? { ...msg, svgData: svgResult.svgData }
+                  : msg
+              ));
+              console.log("SVG generation complete");
+            })
+            .catch(svgError => {
+              console.error('Error generating SVG:', svgError);
+            })
+            .finally(() => {
+              setIsSvgLoading(false);
+              setGeneratingStatus("");
+            });
+          }, 1000); // Wait 1 second after text appears before starting SVG generation
         } catch (error) {
           console.error("Error processing AI response:", error);
           // Add error message to chat
@@ -165,19 +199,67 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
           };
           setMessages((prev) => [...prev, errorMessage]);
           setIsTyping(false);
+          setIsSvgLoading(false);
         }
       }, 1000);
     }
-  }, [initialMessage, callGeminiAPI, messages.length]);
+  }, [initialMessage, messages.length]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  // Auto-hide sidebar when no SVG is available
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant' && !lastMessage.svgData && !isSvgLoading) {
+        setSidebarVisible(false);
+      }
+    }
+  }, [messages, isSvgLoading]);
+
+  // Persist chat history to localStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chatHistory', JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  // Load chat history from localStorage on initial load
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('chatHistory');
+    if (savedHistory && messages.length === 0) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        setMessages(parsedHistory);
+
+        // Also update the chatHistory state for API calls
+        const apiHistory: { role: "user" | "model"; parts: { text: string; }[]; }[] = [];
+        for (let i = 0; i < parsedHistory.length; i++) {
+          const msg = parsedHistory[i];
+          if (msg.role === 'user') {
+            apiHistory.push({ role: 'user', parts: [{ text: msg.content }] });
+          } else if (msg.role === 'assistant') {
+            apiHistory.push({ role: 'model', parts: [{ text: msg.content }] });
+          }
+        }
+        setChatHistory(apiHistory);
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+        localStorage.removeItem('chatHistory');
+      }
+    }
+  }, []);
+
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+
+    // Store the input for later use with SVG generation
+    const currentInput = input;
+    const shouldGenerateSVG = isFirstMessage || deepDiveEnabled;
 
     // Add user message
     const userMessage: ChatMessage = {
@@ -198,40 +280,107 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
+    setShowDeepDive(false);
+    setGeneratingStatus(deepDiveEnabled ? "Generating deep dive response..." : "Thinking...");
 
-    // Call the Gemini API with a slight delay to show typing indicator
+    // Call the text generation API immediately
     setTimeout(async () => {
       try {
-        // Get response from Gemini API
-        const response = await callGeminiAPI(input);
+        // First, get just the text response quickly
+        const textResponse = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: currentInput,
+            history: chatHistory,
+            useThinkingModel: deepDiveEnabled,  // Use Gemini 2.5 Pro for Deep Dive
+            generateSVG: false, // Don't generate SVG yet for faster text response
+            isFollowUp: !isFirstMessage,    // Indicate if this is a follow-up message
+          }),
+        });
+
+        if (!textResponse.ok) {
+          throw new Error(`API call failed with status: ${textResponse.status}`);
+        }
+
+        const textData = await textResponse.json();
+
+        // Update chat history for future API calls
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'user', parts: [{ text: currentInput }] },
+          { role: 'model', parts: [{ text: textData.responseText }] }
+        ]);
+
+        // No longer first message after this
+        setIsFirstMessage(false);
+        // Reset Deep Dive toggle
+        setDeepDiveEnabled(false);
 
         // Split the response into multiple messages
-        const responseMessages = splitIntoMultipleMessages(response);
+        const responseMessages = splitIntoMultipleMessages(textData.responseText);
 
-        // Send messages one by one with typing indicator between each
-        const sendMessages = async () => {
-          for (let i = 0; i < responseMessages.length; i++) {
-            const aiMessage: ChatMessage = {
-              id: messages.length + 2 + i,
-              role: "assistant",
-              content: responseMessages[i],
-              timestamp: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            };
-
-            setMessages((prev) => [...prev, aiMessage]);
-
-            // If not the last message, show typing indicator before next message
-            if (i < responseMessages.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-            }
-          }
-          setIsTyping(false);
+        // Create the AI message without SVG data first
+        const aiMessage: ChatMessage = {
+          id: messages.length + 2,
+          role: "assistant",
+          content: responseMessages[0], // Just use the first message for now
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          svgData: undefined, // No SVG data yet
         };
 
-        sendMessages();
+        // Add the message to the chat
+        setMessages((prev) => [...prev, aiMessage]);
+        setIsTyping(false);
+
+        // Wait a moment for the text to be visible before starting SVG generation
+        if (shouldGenerateSVG) {
+          // Delay SVG generation to ensure text is visible first
+          setTimeout(() => {
+            // Show SVG loading animation
+            setIsSvgLoading(true);
+            setSidebarVisible(true);
+            setGeneratingStatus("Generating visualization...");
+
+            // Now get the SVG in a non-blocking way
+            fetch('/api/svg', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                prompt: currentInput,
+              }),
+            })
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              throw new Error('SVG generation failed');
+            })
+            .then(svgResult => {
+              // Update the message with SVG data
+              setMessages(prev => prev.map(msg =>
+                msg.id === aiMessage.id
+                  ? { ...msg, svgData: svgResult.svgData }
+                  : msg
+              ));
+              console.log("SVG generation complete");
+            })
+            .catch(svgError => {
+              console.error('Error generating SVG:', svgError);
+            })
+            .finally(() => {
+              setIsSvgLoading(false);
+              setGeneratingStatus("");
+            });
+          }, 1000); // Wait 1 second after text appears before starting SVG generation
+        }
       } catch (error) {
         console.error("Error processing AI response:", error);
         // Add error message to chat
@@ -246,13 +395,16 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
         };
         setMessages((prev) => [...prev, errorMessage]);
         setIsTyping(false);
+        setIsSvgLoading(false);
       }
     }, 1000);
   };
 
   return (
-    <Card className="flex flex-col h-full border-0 rounded-none shadow-none bg-black text-white">
-      <CardHeader className="border-b border-gray-800 px-6 py-3 bg-black shadow-sm">
+    <Card className={`h-full border-0 rounded-none shadow-none bg-background text-foreground grid ${sidebarVisible ? 'grid-cols-[1fr,600px]' : 'grid-cols-[1fr,0px]'} overflow-hidden transition-all duration-300`}>
+      {/* Main chat area */}
+      <div className="flex flex-col h-full">
+        <CardHeader className="border-b border-border px-6 py-3 bg-background shadow-sm">
         <div className="flex justify-between items-center w-full">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -274,19 +426,45 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
-              <Phone className="h-5 w-5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-9 w-9"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to clear the chat history?')) {
+                  localStorage.removeItem('chatHistory');
+                  setMessages([]);
+                  setChatHistory([]);
+                  setIsFirstMessage(true);
+                }
+              }}
+              title="Clear chat history"
+            >
+              <Trash2 className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
               <Video className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
-              <Info className="h-5 w-5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-9 w-9 relative"
+              onClick={() => setSidebarVisible(!sidebarVisible)}
+              title={sidebarVisible ? "Hide visualization panel" : "Show visualization panel"}
+            >
+              {sidebarVisible ? (
+                <PanelRightClose className="h-5 w-5" />
+              ) : (
+                <PanelRight className="h-5 w-5" />
+              )}
+              {messages.length > 0 && messages[messages.length - 1].svgData && !sidebarVisible && (
+                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary"></span>
+              )}
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto p-6 bg-black">
+      <CardContent className="flex-1 overflow-y-auto p-6 bg-background">
         <div className="space-y-4 max-w-3xl mx-auto">
           <AnimatePresence initial={false}>
             {messages.map((message, index) => (
@@ -294,7 +472,7 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
                 {/* Date marker */}
                 {message.dateMarker && (
                   <div className="flex justify-center my-4">
-                    <div className="bg-gray-800 text-gray-300 text-xs px-3 py-1 rounded-full">
+                    <div className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-full">
                       {message.dateMarker}
                     </div>
                   </div>
@@ -303,7 +481,7 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
                 {/* Time marker for new message groups */}
                 {message.isNewGroup && !message.dateMarker && (
                   <div className="flex justify-center my-3">
-                    <div className="text-gray-500 text-xs">
+                    <div className="text-muted-foreground text-xs">
                       {new Date().toLocaleString('en-US', { weekday: 'short' })} {message.timestamp}
                     </div>
                   </div>
@@ -335,13 +513,17 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
 
                     <div
                       className={`${message.role === "user"
-                        ? "bg-blue-500 text-white rounded-2xl rounded-tr-sm p-3"
-                        : "bg-gray-700 text-white rounded-2xl rounded-tl-sm p-4"
+                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm p-3"
+                        : "bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm p-4"
                       } ${index > 0 && messages[index-1].role === message.role && !message.isNewGroup
                         ? (message.role === "user" ? "rounded-tr-2xl" : "rounded-tl-2xl")
                         : ""}`}
                     >
-                      <p className={`${message.role === "assistant" ? "text-sm leading-relaxed whitespace-pre-line" : "text-sm"}`}>{message.content}</p>
+                      <div>
+                        <p className={`${message.role === "assistant" ? "text-sm leading-relaxed whitespace-pre-line" : "text-sm"}`}>{message.content}</p>
+
+                        {/* SVGs are now displayed in the side panel */}
+                      </div>
                     </div>
 
                     {/* User Avatar - only show for first message in a group */}
@@ -380,11 +562,14 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
                     </AvatarFallback>
                   </Avatar>
                 )}
-                <div className="p-4 bg-gray-700 text-white rounded-2xl rounded-tl-sm">
-                  <div className="flex gap-2 items-center h-5">
-                    <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse"></div>
-                    <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse [animation-delay:0.3s]"></div>
-                    <div className="h-2 w-2 rounded-full bg-gray-300 animate-pulse [animation-delay:0.6s]"></div>
+                <div className="p-4 bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm">
+                  <div className="flex flex-col items-center justify-center">
+                    <BookLoader
+                      size="40px"
+                      color="#4645F6"
+                      textColor="#4645F6"
+                      text={generatingStatus || "Thinking"}
+                    />
                   </div>
                 </div>
               </div>
@@ -393,7 +578,7 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
           <div ref={messagesEndRef} />
         </div>
       </CardContent>
-      <CardFooter className="border-t border-gray-800 p-4 bg-black shadow-sm">
+      <CardFooter className="border-t border-border p-4 bg-background shadow-sm">
         <form
           onSubmit={handleSubmit}
           className="flex w-full max-w-3xl mx-auto gap-2"
@@ -402,9 +587,12 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
             <Input
               placeholder="Type a message..."
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                setShowDeepDive(!!e.target.value.trim());
+              }}
               disabled={isTyping}
-              className="pl-4 pr-10 py-3 rounded-full border-gray-700 bg-gray-800 text-white shadow-sm focus:shadow-md transition-all duration-200 placeholder:text-gray-400"
+              className="pl-4 pr-10 py-3 rounded-full border-border bg-input text-foreground shadow-sm focus:shadow-md transition-all duration-200 placeholder:text-muted-foreground"
             />
             {!isTyping && input.trim() && (
               <motion.div
@@ -416,16 +604,127 @@ export default function ChatInterface({ initialMessage, useThinkingModel = false
               </motion.div>
             )}
           </div>
+          {showDeepDive && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center space-x-1 bg-muted/30 px-3 py-1.5 rounded-full">
+                <button
+                  type="button"
+                  onClick={() => setDeepDiveEnabled(!deepDiveEnabled)}
+                  className={`relative rounded-full h-5 w-10 flex items-center transition-colors ${deepDiveEnabled ? 'bg-primary' : 'bg-muted'}`}
+                  disabled={isTyping}
+                >
+                  <motion.div
+                    className="absolute h-4 w-4 rounded-full bg-white shadow-sm"
+                    animate={{ x: deepDiveEnabled ? 5 : 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </button>
+                <span className="text-xs font-medium">
+                  {deepDiveEnabled ? (
+                    <span className="flex items-center gap-1 text-primary">
+                      <Sparkles className="h-3 w-3" />
+                      Deep Dive
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Deep Dive</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
           <Button
             type="submit"
             size="icon"
             disabled={isTyping || !input.trim()}
-            className="h-12 w-12 rounded-full shadow-sm bg-blue-500 hover:bg-blue-600"
+            className="h-12 w-12 rounded-full shadow-sm bg-primary hover:bg-primary/90"
           >
             <Send className="h-5 w-5" />
           </Button>
         </form>
       </CardFooter>
+      </div>
+      {/* SVG visualization and description panel - only visible when SVG exists or is loading */}
+      <div className={`${sidebarVisible ? 'w-[600px]' : 'w-0'} border-l border-border flex flex-col h-full overflow-hidden transition-all duration-300`}>
+        {/* Current SVG visualization */}
+        {isSvgLoading ? (
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-border flex justify-between items-center">
+              <h3 className="text-lg font-medium">Generating Visualization</h3>
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+            <div className="flex-3 overflow-auto p-4 flex items-center justify-center h-[75%]">
+              <div className="text-center">
+                <div className="relative w-[400px] h-[300px] bg-muted/30 rounded-lg flex flex-col items-center justify-center overflow-hidden">
+                  {/* Background animation */}
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/20 to-transparent animate-pulse"></div>
+                    <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-primary/10 animate-ping [animation-duration:3s]"></div>
+                    <div className="absolute bottom-1/4 right-1/4 w-24 h-24 rounded-full bg-primary/10 animate-ping [animation-duration:2.5s] [animation-delay:0.5s]"></div>
+                  </div>
+
+                  {/* Main content */}
+                  <Sparkles className="h-16 w-16 text-primary animate-pulse" />
+                  <div className="mt-6 flex flex-col items-center z-10">
+                    <div className="flex gap-2 items-center">
+                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.3s]"></div>
+                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.6s]"></div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-4 font-medium">Creating visualization...</p>
+                    <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-border h-[25%]">
+              <h3 className="text-sm font-medium mb-2">Description</h3>
+              <div className="animate-pulse space-y-2">
+                <div className="h-3 bg-muted/50 rounded w-3/4"></div>
+                <div className="h-3 bg-muted/50 rounded w-1/2"></div>
+                <div className="h-3 bg-muted/50 rounded w-5/6"></div>
+              </div>
+            </div>
+          </div>
+        ) : messages.length > 0 && messages[messages.length - 1].svgData ? (
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-border flex justify-between items-center">
+              <h3 className="text-lg font-medium">Visualization</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setSidebarVisible(false)}
+              >
+                <PanelRightClose className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-3 overflow-auto p-4 flex items-center justify-center h-[75%]">
+              <div
+                className="rounded-lg overflow-hidden border border-border shadow-md max-w-full max-h-full"
+                dangerouslySetInnerHTML={{ __html: messages[messages.length - 1].svgData || '' }}
+              />
+            </div>
+            <div className="p-4 border-t border-border h-[25%]">
+              <h3 className="text-sm font-medium mb-2">Description</h3>
+              <p className="text-sm text-muted-foreground">
+                This visualization illustrates {messages.length > 0 && messages[messages.length - 1].content.substring(0, 50)}...
+              </p>
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium">Tip:</span> Hover over elements to see more details. The visualization is interactive.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full p-6 text-muted-foreground">
+            <div className="text-center">
+              <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p>Ask a question to generate a visualization</p>
+            </div>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
