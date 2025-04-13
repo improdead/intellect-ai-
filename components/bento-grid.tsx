@@ -148,7 +148,7 @@ const BentoGridItem = ({
               {icon}
             </motion.div>
           )}
-          <h3 className="font-bold text-xl mb-2">{title}</h3>
+          <h3 className="font-bold text-xl mb-2 font-robit-medium">{title}</h3>
           <p className="text-sm text-foreground/70 line-clamp-3">
             {description}
           </p>
@@ -164,7 +164,7 @@ const BentoGridItem = ({
               href={link}
               className="inline-flex items-center text-sm font-medium text-primary group/link"
             >
-              Learn more
+              <span className="font-robit-regular">Learn more</span>
               <motion.span
                 className="inline-block ml-1"
                 initial={{ x: 0 }}
