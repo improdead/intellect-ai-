@@ -126,7 +126,7 @@ const achievements = [
   {
     id: 4,
     name: "Deep Diver",
-    description: "Spend 10+ hours in deep research",
+    description: "Spend 10+ hours in deep learning",
     progress: 70,
     icon: <Clock3 className="h-10 w-10 text-purple-500" />,
     date: "In progress (7/10 hours)",

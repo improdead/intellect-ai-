@@ -67,7 +67,6 @@ export default function DashboardLayout({
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "intelect", href: "/dashboard/intelect", icon: MessageSquare },
     { name: "Quiz", href: "/dashboard/quiz", icon: Brain },
-    { name: "Research", href: "/dashboard/research", icon: BookOpen },
     { name: "Progress", href: "/dashboard/progress", icon: BarChart },
     { name: "History", href: "/dashboard/history", icon: History },
   ];
