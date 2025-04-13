@@ -319,7 +319,6 @@ export const historyService = {
         let minutes = 0;
         if (entry.activity_type === "lesson") minutes = 15;
         else if (entry.activity_type === "quiz") minutes = 10;
-        else if (entry.activity_type === "research") minutes = 20;
 
         weeklyProgress[dayIndex].minutes += minutes;
         weeklyProgress[dayIndex].topics += 1;
@@ -419,7 +418,6 @@ export const historyService = {
         // Estimate minutes based on activity type
         if (entry.activity_type === "lesson") totalMinutes += 15;
         else if (entry.activity_type === "quiz") totalMinutes += 10;
-        else if (entry.activity_type === "research") totalMinutes += 20;
       });
 
       const hours = Math.floor(totalMinutes / 60);
