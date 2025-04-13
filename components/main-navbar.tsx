@@ -24,7 +24,7 @@ export function MainNavbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
-          <span className="font-bold text-xl">intelect</span>
+          <span className="font-bold text-xl font-robit-bold">intelect</span>
         </Link>
 
         {/* Navigation */}
@@ -33,19 +33,19 @@ export function MainNavbar() {
             href="/about"
             className="text-foreground/80 hover:text-foreground transition-colors"
           >
-            About
+            <span className="font-robit-regular">About</span>
           </Link>
           <Link
             href="/terms"
             className="text-foreground/80 hover:text-foreground transition-colors"
           >
-            Terms
+            <span className="font-robit-regular">Terms</span>
           </Link>
           <Link
             href="/privacy"
             className="text-foreground/80 hover:text-foreground transition-colors"
           >
-            Privacy
+            <span className="font-robit-regular">Privacy</span>
           </Link>
         </div>
 
@@ -96,7 +96,7 @@ function LoginButton() {
               animate={{ y: isHovered ? -30 : 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
             >
-              Login
+              <span className="font-robit-medium">Login</span>
             </motion.span>
 
             {/* Arrow element */}
@@ -142,7 +142,7 @@ function SignUpButton() {
               animate={{ y: isHovered ? -30 : 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
             >
-              Sign up
+              <span className="font-robit-medium">Sign up</span>
             </motion.span>
 
             {/* Arrow element */}

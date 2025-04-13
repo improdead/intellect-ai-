@@ -312,6 +312,35 @@ export interface Database {
           created_at?: string;
         };
       };
+      user_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          login_time: string;
+          logout_time: string | null;
+          duration_minutes: number | null;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          login_time?: string;
+          logout_time?: string | null;
+          duration_minutes?: number | null;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          login_time?: string;
+          logout_time?: string | null;
+          duration_minutes?: number | null;
+          is_active?: boolean;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

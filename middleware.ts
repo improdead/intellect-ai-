@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@auth0/nextjs-auth0/edge";
 import type { NextRequest } from "next/server";
+import { sessionTrackerMiddleware } from "./middleware/session-tracker";
 
 // Define protected routes that require authentication
 const protectedRoutes = ["/dashboard", "/profile"];
@@ -21,6 +22,12 @@ export async function middleware(req: NextRequest) {
     url.searchParams.set("returnTo", pathname);
     url.searchParams.set("connection", "google-oauth2");
     return NextResponse.redirect(url);
+  }
+
+  // Track user session if authenticated
+  if (session?.user) {
+    // Call the session tracker middleware
+    await sessionTrackerMiddleware(req);
   }
 
   return res;

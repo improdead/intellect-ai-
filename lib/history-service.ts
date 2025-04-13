@@ -1,6 +1,7 @@
 import { getSupabaseClient } from "./supabase-client";
 import { auth0IdToUuid } from "./auth0-utils";
 import { Database } from "@/types/supabase";
+import { sessionService } from "./session-service";
 
 // User history entry with additional UI properties
 export interface HistoryEntry {
@@ -267,39 +268,70 @@ export const historyService = {
         console.error("Error fetching recent history:", historyError);
       }
 
-      // Get user's progress on lessons
-      const { data: lessonProgress, error: progressError } = await supabase
-        .from("user_progress")
-        .select(
-          `
-          *,
-          lessons!inner(
-            title,
-            courses!inner(
+      // Get user's progress on lessons - with error handling for missing tables or relationships
+      let lessonProgress = [];
+      try {
+        const { data, error } = await supabase
+          .from("user_progress")
+          .select(
+            `
+            *,
+            lessons!inner(
               title,
-              subjects!inner(
-                title
+              courses!inner(
+                title,
+                subjects!inner(
+                  name
+                )
               )
             )
+          `
           )
-        `
-        )
-        .eq("user_id", supabaseUuid)
-        .order("last_accessed", { ascending: false });
+          .eq("user_id", supabaseUuid)
+          .order("last_accessed", { ascending: false });
 
-      if (progressError) {
-        console.error("Error fetching lesson progress:", progressError);
+        if (error) {
+          console.error("Error fetching lesson progress:", error);
+        } else {
+          lessonProgress = data || [];
+        }
+      } catch (error) {
+        console.error("Exception fetching lesson progress:", error);
       }
 
-      // Get user's quiz attempts
-      const { data: quizAttempts, error: quizError } = await supabase
-        .from("user_quiz_attempts")
-        .select("*")
-        .eq("user_id", supabaseUuid)
-        .order("completed_at", { ascending: false });
+      // Get user's quiz attempts - with error handling
+      let quizAttempts = [];
+      try {
+        const { data, error } = await supabase
+          .from("user_quiz_attempts")
+          .select("*")
+          .eq("user_id", supabaseUuid)
+          .order("completed_at", { ascending: false });
 
-      if (quizError) {
-        console.error("Error fetching quiz attempts:", quizError);
+        if (error) {
+          console.error("Error fetching quiz attempts:", error);
+        } else {
+          quizAttempts = data || [];
+        }
+      } catch (error) {
+        console.error("Exception fetching quiz attempts:", error);
+      }
+
+      // Get chat history count - with error handling
+      let chatHistory = [];
+      try {
+        const { data, error } = await supabase
+          .from("chat_history")
+          .select("id")
+          .eq("user_id", supabaseUuid);
+
+        if (error) {
+          console.error("Error fetching chat history:", error);
+        } else {
+          chatHistory = data || [];
+        }
+      } catch (error) {
+        console.error("Exception fetching chat history:", error);
       }
 
       // Calculate weekly progress
@@ -340,7 +372,7 @@ export const historyService = {
 
       // Process lesson progress
       (lessonProgress || []).forEach((progress, index) => {
-        const subject = progress.lessons?.courses?.subjects?.title;
+        const subject = progress.lessons?.courses?.subjects?.name;
         if (!subject) return;
 
         if (!subjectProgressMap.has(subject)) {
@@ -374,7 +406,7 @@ export const historyService = {
         .slice(0, 4)
         .map((progress) => {
           const subject =
-            progress.lessons?.courses?.subjects?.title || "Unknown";
+            progress.lessons?.courses?.subjects?.name || "Unknown";
           const lessonTitle = progress.lessons?.title || "Unknown Lesson";
 
           // Calculate time since last accessed
@@ -412,16 +444,12 @@ export const historyService = {
           };
         });
 
-      // Calculate stats
-      let totalMinutes = 0;
-      (recentHistory || []).forEach((entry) => {
-        // Estimate minutes based on activity type
-        if (entry.activity_type === "lesson") totalMinutes += 15;
-        else if (entry.activity_type === "quiz") totalMinutes += 10;
-      });
-
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
+      // Get study time from sessions
+      const weeklyStudyMinutes = await sessionService.getWeeklyStudyTime(
+        userId
+      );
+      const studyHours = Math.floor(weeklyStudyMinutes / 60);
+      const studyMinutes = weeklyStudyMinutes % 60;
 
       // Calculate average quiz score
       let avgScore = 0;
@@ -439,8 +467,8 @@ export const historyService = {
         subjectProgress,
         recentTopics,
         stats: {
-          studyTime: `${hours}.${Math.floor(minutes / 6)} hours`,
-          topicsCovered: recentHistory?.length || 0,
+          studyTime: `${studyHours}.${Math.floor(studyMinutes / 6)} hours`,
+          topicsCovered: chatHistory?.length || 0,
           quizScore: `${Math.round(avgScore)}%`,
           streak,
         },

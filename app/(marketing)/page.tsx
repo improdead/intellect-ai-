@@ -143,12 +143,12 @@ export default function Home() {
             transition={{ duration: 0.7 }}
             className="max-w-3xl mx-auto space-y-4"
           >
-            <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary font-medium text-sm mb-4 backdrop-blur-sm">
+            <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary font-medium text-sm mb-4 backdrop-blur-sm font-robit-regular">
               Your ultimate learning companion
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight">
-              Learn anything with
+              <span className="font-robit-bold">Learn anything with</span>
               <br />
               <LayoutGroup>
                 <motion.div
@@ -176,7 +176,7 @@ export default function Home() {
                   />
                 </motion.div>
               </LayoutGroup>
-              conversations
+              <span className="font-robit-medium">conversations</span>
             </h1>
 
             <p className="text-xl text-foreground/80 mt-6 max-w-2xl mx-auto">
@@ -198,7 +198,7 @@ export default function Home() {
               className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg group transition-all duration-300"
             >
               <span className="flex items-center gap-2">
-                Start Chatting
+                <span className="font-robit-bold">Start Chatting</span>
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </span>
             </Button>
@@ -209,7 +209,9 @@ export default function Home() {
               className="border-primary/20 hover:bg-primary/5 transition-all duration-300"
               asChild
             >
-              <Link href="#how-it-works">See how it works</Link>
+              <Link href="#how-it-works">
+                <span className="font-robit-medium">See how it works</span>
+              </Link>
             </Button>
           </motion.div>
 
@@ -238,7 +240,9 @@ export default function Home() {
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-5xl font-bold">
-              Explore our learning ecosystem
+              <span className="font-robit-bold">
+                Explore our learning ecosystem
+              </span>
             </h2>
             <p className="text-foreground/70 mt-4 max-w-2xl mx-auto">
               Discover all the ways Intellect can transform your learning
@@ -426,7 +430,9 @@ export default function Home() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-3xl md:text-5xl font-bold">Explore Topics</h2>
+              <h2 className="text-3xl md:text-5xl font-bold">
+                <span className="font-robit-bold">Explore Topics</span>
+              </h2>
               <p className="text-foreground/70 mt-4 max-w-2xl mx-auto">
                 Chat about any subject with our interactive AI learning
                 companion
@@ -619,7 +625,9 @@ export default function Home() {
                       onClick={() => setActiveCardIndex(index)}
                     >
                       <div className="flex-1 flex flex-col justify-center text-white">
-                        <h3 className="font-bold text-2xl mb-5">{title}</h3>
+                        <h3 className="font-bold text-2xl mb-5 font-robit-medium">
+                          {title}
+                        </h3>
                         <p>{description}</p>
                       </div>
 
@@ -686,7 +694,9 @@ export default function Home() {
 
             <div className="text-center">
               <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                Ready to transform your learning experience?
+                <span className="font-robit-bold">
+                  Ready to transform your learning experience?
+                </span>
               </h2>
               <p className="text-xl text-foreground/70 mb-8 max-w-2xl mx-auto">
                 Join thousands of students who are already learning faster and
@@ -703,7 +713,9 @@ export default function Home() {
                   className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg group transition-all duration-300 text-lg px-8 py-3 h-auto min-h-[60px]"
                 >
                   <span className="flex items-center gap-2 whitespace-nowrap">
-                    Start Chatting Today
+                    <span className="font-robit-bold">
+                      Start Chatting Today
+                    </span>
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                   </span>
                 </Button>
