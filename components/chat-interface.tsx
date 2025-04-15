@@ -101,12 +101,13 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [chatHistory, setChatHistory] = useState<
-    { role: "user" | "model"; parts: { text: string }[] }[]
+    { role: "user" | "model"; parts: { text: string }[]; svgData?: string }[]
   >([]);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [deepDiveEnabled, setDeepDiveEnabled] = useState(false);
   const [isFirstMessage, setIsFirstMessage] = useState(messages.length <= 1);
   const [generatingStatus, setGeneratingStatus] = useState("");
+  const [forceSVG, setForceSVG] = useState(false);
   // We don't need the isSvgLoading state anymore as we're using message.svgGenerating
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -127,6 +128,24 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
 
     // Return as a single message instead of splitting by paragraphs
     return [cleanedContent];
+  };
+
+  // Helper function to get the most recent SVG from chat history
+  const getPreviousSVG = (
+    history: {
+      role: "user" | "model";
+      parts: { text: string }[];
+      svgData?: string;
+    }[]
+  ): string | undefined => {
+    // Look for the most recent model message with SVG data
+    for (let i = history.length - 1; i >= 0; i--) {
+      const message = history[i];
+      if (message.role === "model" && message.svgData) {
+        return message.svgData;
+      }
+    }
+    return undefined;
   };
 
   // Process initial message if provided
@@ -165,6 +184,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
               useThinkingModel: false, // Normal mode for initial message
               generateSVG: false, // Don't generate SVG yet for faster text response
               isFollowUp: false, // First message
+              forceSVG: forceSVG, // User explicitly requested SVG
             }),
           });
 
@@ -179,8 +199,11 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
           // Update chat history for future API calls
           setChatHistory((prev) => [
             ...prev,
-            { role: "user", parts: [{ text: initialMessage }] },
-            { role: "model", parts: [{ text: textData.responseText }] },
+            { role: "user" as const, parts: [{ text: initialMessage }] },
+            {
+              role: "model" as const,
+              parts: [{ text: textData.responseText }],
+            },
           ]);
 
           // Split the response into multiple messages
@@ -206,42 +229,61 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
 
           // Wait a moment for the text to be visible before starting SVG generation
           setTimeout(() => {
-            // Update the status message
-            setGeneratingStatus("Generating visualization...");
+            try {
+              // Update the status message
+              setGeneratingStatus("Generating visualization...");
 
-            // Now get the SVG in a non-blocking way
-            fetch("/api/svg", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                prompt: initialMessage,
-              }),
-            })
-              .then((response) => {
-                if (response.ok) {
-                  return response.json();
-                }
-                throw new Error("SVG generation failed");
+              // Now get the SVG in a non-blocking way
+              fetch("/api/svg", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  prompt: initialMessage,
+                  previousSVG: getPreviousSVG(chatHistory),
+                }),
               })
-              .then((svgResult) => {
-                // Update the message with SVG data
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === aiMessage.id
-                      ? { ...msg, svgData: svgResult.svgData }
-                      : msg
-                  )
-                );
-                console.log("SVG generation complete");
-              })
-              .catch((svgError) => {
-                console.error("Error generating SVG:", svgError);
-              })
-              .finally(() => {
-                setGeneratingStatus("");
-              });
+                .then((response) => {
+                  if (response.ok) {
+                    return response.json();
+                  }
+                  throw new Error("SVG generation failed");
+                })
+                .then((svgResult) => {
+                  // Update the message with SVG data
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === aiMessage.id
+                        ? { ...msg, svgData: svgResult.svgData }
+                        : msg
+                    )
+                  );
+
+                  // Also update the chat history with the SVG data
+                  setChatHistory((prev) => {
+                    const lastIndex = prev.length - 1;
+                    if (lastIndex >= 0 && prev[lastIndex].role === "model") {
+                      const updatedHistory = [...prev];
+                      updatedHistory[lastIndex] = {
+                        ...updatedHistory[lastIndex],
+                        svgData: svgResult.svgData,
+                      };
+                      return updatedHistory;
+                    }
+                    return prev;
+                  });
+                  console.log("SVG generation complete");
+                })
+                .catch((svgError) => {
+                  console.error("Error generating SVG:", svgError);
+                })
+                .finally(() => {
+                  setGeneratingStatus("");
+                });
+            } catch (svgError) {
+              console.error("Error generating SVG:", svgError);
+            }
           }, 1000); // Wait 1 second after text appears before starting SVG generation
         } catch (error) {
           console.error("Error processing AI response:", error);
@@ -288,13 +330,18 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
         const apiHistory: {
           role: "user" | "model";
           parts: { text: string }[];
+          svgData?: string;
         }[] = [];
         for (let i = 0; i < parsedHistory.length; i++) {
           const msg = parsedHistory[i];
           if (msg.role === "user") {
             apiHistory.push({ role: "user", parts: [{ text: msg.content }] });
           } else if (msg.role === "assistant") {
-            apiHistory.push({ role: "model", parts: [{ text: msg.content }] });
+            apiHistory.push({
+              role: "model",
+              parts: [{ text: msg.content }],
+              svgData: msg.svgData,
+            });
           }
         }
         setChatHistory(apiHistory);
@@ -312,7 +359,6 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
 
     // Store the input for later use with SVG generation
     const currentInput = input;
-    const shouldGenerateSVG = isFirstMessage || deepDiveEnabled;
 
     // Add user message
     const userMessage: ChatMessage = {
@@ -337,6 +383,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
     setInput("");
     setIsTyping(true);
     setShowDeepDive(false);
+    // Don't reset forceSVG here to maintain user preference
     setGeneratingStatus(
       deepDiveEnabled ? "Generating deep dive response..." : "Thinking..."
     );
@@ -356,6 +403,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
             useThinkingModel: deepDiveEnabled, // Use Gemini 2.5 Pro for Deep Dive
             generateSVG: false, // Don't generate SVG yet for faster text response
             isFollowUp: !isFirstMessage, // Indicate if this is a follow-up message
+            forceSVG: forceSVG, // User explicitly requested SVG
           }),
         });
 
@@ -367,17 +415,18 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
 
         const textData = await textResponse.json();
 
-        // Update chat history for future API calls
-        setChatHistory((prev) => [
-          ...prev,
-          { role: "user", parts: [{ text: currentInput }] },
-          { role: "model", parts: [{ text: textData.responseText }] },
+        // Update chat history for future API calls - we'll add the SVG data later
+        setChatHistory([
+          ...chatHistory,
+          { role: "user" as const, parts: [{ text: currentInput }] },
+          { role: "model" as const, parts: [{ text: textData.responseText }] },
         ]);
 
         // No longer first message after this
         setIsFirstMessage(false);
         // Reset Deep Dive toggle
         setDeepDiveEnabled(false);
+        // Don't reset forceSVG to maintain user preference
 
         // Split the response into multiple messages
         const responseMessages = splitIntoMultipleMessages(
@@ -394,17 +443,19 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
             minute: "2-digit",
           }),
           svgData: undefined, // No SVG data yet
-          svgGenerating: shouldGenerateSVG, // Set to true if we'll be generating an SVG
+          svgGenerating: true, // Always show loading initially, we'll update based on AI response
         };
 
         // Add the message to the chat
         setMessages((prev) => [...prev, aiMessage]);
         setIsTyping(false);
 
-        // Wait a moment for the text to be visible before starting SVG generation
-        if (shouldGenerateSVG) {
-          // Delay SVG generation to ensure text is visible first
-          setTimeout(() => {
+        // We'll always check if the AI recommends an SVG
+        // The API will decide whether to generate one based on the AI's recommendation
+        // and the forceSVG flag
+        // Delay SVG generation to ensure text is visible first
+        setTimeout(() => {
+          try {
             // Update the status message
             setGeneratingStatus("Generating visualization...");
 
@@ -416,6 +467,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
               },
               body: JSON.stringify({
                 prompt: currentInput,
+                previousSVG: getPreviousSVG(chatHistory),
               }),
             })
               .then((response) => {
@@ -437,6 +489,20 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                       : msg
                   )
                 );
+
+                // Also update the chat history with the SVG data
+                setChatHistory((prev) => {
+                  const lastIndex = prev.length - 1;
+                  if (lastIndex >= 0 && prev[lastIndex].role === "model") {
+                    const updatedHistory = [...prev];
+                    updatedHistory[lastIndex] = {
+                      ...updatedHistory[lastIndex],
+                      svgData: svgResult.svgData,
+                    };
+                    return updatedHistory;
+                  }
+                  return prev;
+                });
                 console.log("SVG generation complete");
               })
               .catch((svgError) => {
@@ -445,8 +511,10 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
               .finally(() => {
                 setGeneratingStatus("");
               });
-          }, 1000); // Wait 1 second after text appears before starting SVG generation
-        }
+          } catch (svgError) {
+            console.error("Error generating SVG:", svgError);
+          }
+        }, 1000); // Wait 1 second after text appears before starting SVG generation
       } catch (error) {
         console.error("Error processing AI response:", error);
         // Add error message to chat
@@ -845,20 +913,53 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                 </motion.div>
               )}
             </div>
-            {showDeepDive && (
+            {input.trim() && (
               <div className="flex items-center gap-2">
+                {showDeepDive && (
+                  <div className="flex items-center space-x-1 bg-muted/30 px-3 py-1.5 rounded-full">
+                    <button
+                      type="button"
+                      onClick={() => setDeepDiveEnabled(!deepDiveEnabled)}
+                      className={`relative rounded-full h-5 w-10 flex items-center transition-colors ${
+                        deepDiveEnabled ? "bg-primary" : "bg-muted"
+                      }`}
+                      disabled={isTyping}
+                    >
+                      <motion.div
+                        className="absolute h-4 w-4 rounded-full bg-white shadow-sm"
+                        animate={{ x: deepDiveEnabled ? 5 : 1 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 500,
+                          damping: 30,
+                        }}
+                      />
+                    </button>
+                    <span className="text-xs font-medium">
+                      {deepDiveEnabled ? (
+                        <span className="flex items-center gap-1 text-primary">
+                          <Sparkles className="h-3 w-3" />
+                          Deep Dive
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Deep Dive</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+                {/* SVG Toggle */}
                 <div className="flex items-center space-x-1 bg-muted/30 px-3 py-1.5 rounded-full">
                   <button
                     type="button"
-                    onClick={() => setDeepDiveEnabled(!deepDiveEnabled)}
+                    onClick={() => setForceSVG(!forceSVG)}
                     className={`relative rounded-full h-5 w-10 flex items-center transition-colors ${
-                      deepDiveEnabled ? "bg-primary" : "bg-muted"
+                      forceSVG ? "bg-primary" : "bg-muted"
                     }`}
                     disabled={isTyping}
                   >
                     <motion.div
                       className="absolute h-4 w-4 rounded-full bg-white shadow-sm"
-                      animate={{ x: deepDiveEnabled ? 5 : 1 }}
+                      animate={{ x: forceSVG ? 5 : 1 }}
                       transition={{
                         type: "spring",
                         stiffness: 500,
@@ -867,13 +968,40 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                     />
                   </button>
                   <span className="text-xs font-medium">
-                    {deepDiveEnabled ? (
+                    {forceSVG ? (
                       <span className="flex items-center gap-1 text-primary">
-                        <Sparkles className="h-3 w-3" />
-                        Deep Dive
+                        <svg
+                          className="h-3 w-3"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M12 2L2 7L12 12L22 7L12 2Z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M2 17L12 22L22 17"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M2 12L12 17L22 12"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        Visualize
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">Deep Dive</span>
+                      <span className="text-muted-foreground">Visualize</span>
                     )}
                   </span>
                 </div>

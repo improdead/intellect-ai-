@@ -10,13 +10,19 @@ import {
 interface ChatRequestBody {
   message: string;
   // History format needs to match Google AI models' expected format
-  history: { role: "user" | "model"; parts: { text: string }[] }[];
+  history: {
+    role: "user" | "model";
+    parts: { text: string }[];
+    svgData?: string;
+  }[];
   // When true, generates SVG visualizations; when false, just provides text responses
   useThinkingModel: boolean;
   // Flag to indicate if this is a follow-up question (to avoid generating SVG for follow-ups)
   isFollowUp?: boolean;
   // Flag to explicitly request an SVG visualization
   generateSVG?: boolean;
+  // Flag to force SVG generation regardless of AI recommendation
+  forceSVG?: boolean;
 }
 
 // --- Initialize Google AI Client ---
@@ -69,6 +75,7 @@ export async function POST(request: NextRequest) {
       useThinkingModel,
       isFollowUp = false,
       generateSVG = false,
+      forceSVG = false,
     } = body;
 
     // Log request details
@@ -78,15 +85,14 @@ export async function POST(request: NextRequest) {
     console.log("API Key available:", !!apiKey);
 
     // --- 1. Determine if we should generate an SVG ---
-    // Generate SVG if:
-    // 1. Deep Dive is requested (generateSVG will be true in this case)
-    // 2. OR if it's the first message in a conversation (isFollowUp is false)
-    const shouldGenerateSVG = generateSVG || !isFollowUp;
+    // We'll initially set this to false and update it based on AI recommendation
+    // or if forceSVG is true
+    let shouldGenerateSVG = forceSVG;
     console.log(
-      "Should generate SVG:",
+      "Initial SVG generation setting:",
       shouldGenerateSVG,
-      "(isFollowUp:",
-      isFollowUp,
+      "(forceSVG:",
+      forceSVG,
       "generateSVG:",
       generateSVG,
       ")"
@@ -124,7 +130,11 @@ If the user asks for a definition, provide the definition. 📖
 
 If the user asks for a summary, provide a summary. 📑
 
-Make your response engaging by using emojis throughout! 😃 💫 🌟`;
+Make your response engaging by using emojis throughout! 😃 💫 🌟
+
+IMPORTANT: At the very end of your response, include a single line with the format: "[SVG_NEEDED: true]" or "[SVG_NEEDED: false]" to indicate whether a visual SVG would be helpful for this response. Only include "true" if the topic would genuinely benefit from a visual representation (like scientific concepts, processes, mathematical relationships, etc.). For simple greetings, clarifications, or text-only topics, use "false".
+
+If the user asks about modifying or improving a previous SVG visualization, always respond with [SVG_NEEDED: true] so a new visualization will be generated.`;
 
     // --- 4. Prepare the content for the API call ---
     let contents: Content[] = [];
@@ -142,8 +152,12 @@ Make your response engaging by using emojis throughout! 😃 💫 🌟`;
       });
     }
 
-    // Add history and current message
-    contents = [...contents, ...history];
+    // Add history and current message - strip out svgData as Gemini API doesn't accept it
+    const cleanHistory = history.map((item) => ({
+      role: item.role,
+      parts: item.parts,
+    }));
+    contents = [...contents, ...cleanHistory];
     contents.push({ role: "user", parts: currentMessageContent });
 
     console.log(
@@ -181,8 +195,23 @@ Make your response engaging by using emojis throughout! 😃 💫 🌟`;
         responseText.substring(0, 200) + "..."
       );
 
-      // Always keep the original response text
-      finalResponseText = responseText.trim();
+      // Check if the response contains the SVG recommendation marker
+      const svgNeededMatch = responseText.match(
+        /\[SVG_NEEDED:\s*(true|false)\]/i
+      );
+      const aiRecommendsSVG =
+        svgNeededMatch && svgNeededMatch[1].toLowerCase() === "true";
+
+      // Remove the SVG marker from the final text
+      finalResponseText = responseText
+        .replace(/\[SVG_NEEDED:\s*(true|false)\]/i, "")
+        .trim();
+
+      // Update shouldGenerateSVG based on AI recommendation or if explicitly requested
+      shouldGenerateSVG = shouldGenerateSVG || aiRecommendsSVG || generateSVG;
+
+      console.log("AI recommends SVG:", aiRecommendsSVG);
+      console.log("Final shouldGenerateSVG decision:", shouldGenerateSVG);
 
       // Generate SVG if needed
       if (shouldGenerateSVG) {

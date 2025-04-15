@@ -36,12 +36,13 @@ const safetySettings = [
 
 interface SVGRequestBody {
   prompt: string;
+  previousSVG?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: SVGRequestBody = await request.json();
-    const { prompt } = body;
+    const { prompt, previousSVG } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     and end with: </svg>`;
 
     // Create the prompt for SVG generation
-    const svgPrompt = `Generate an interactive and cool looking SVG visualization for: "${prompt}"
+    let svgPrompt = `Generate an interactive and cool looking SVG visualization for: "${prompt}"
 
 Guidelines:
 - Create an SVG that is 600px wide and 400px tall
@@ -89,6 +90,36 @@ The SVG should start with: <svg width="600" height="400" xmlns="http://www.w3.or
 and end with: </svg>
 
 IMPORTANT: Your response must ONLY contain the SVG code, no markdown, no explanations, no additional text. Just the raw SVG code starting with <svg and ending with </svg>.`;
+
+    // If there's a previous SVG, include it in the prompt
+    if (
+      previousSVG &&
+      previousSVG.startsWith("<svg") &&
+      previousSVG.includes("</svg>")
+    ) {
+      console.log("Previous SVG provided, will use for reference");
+      svgPrompt = `Generate an improved or modified version of the following SVG visualization based on the prompt: "${prompt}"
+
+Here is the previous SVG that you created:
+
+${previousSVG}
+
+Please create a new SVG that builds upon or improves this visualization. The user may want specific changes or improvements.
+
+Guidelines:
+- Maintain the same dimensions (600px wide and 400px tall)
+- Keep the same general structure but improve or modify as needed
+- Preserve any useful interactive elements and data-label attributes
+- Add new elements or modify existing ones based on the prompt
+- The SVG should be educational and help visualize the concept
+- DO NOT include any explanations or text outside the SVG code
+- ONLY return the SVG code, nothing else
+
+The SVG should start with: <svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+and end with: </svg>
+
+IMPORTANT: Your response must ONLY contain the SVG code, no markdown, no explanations, no additional text. Just the raw SVG code starting with <svg and ending with </svg>.`;
+    }
 
     // Initialize the Gemini model
     const model = genAI.getGenerativeModel({
