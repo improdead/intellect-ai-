@@ -1,9 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} from "@google/generative-ai";
 
-// OpenRouter API configuration from environment variables
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/optimus-alpha";
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+// Google AI configuration
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+if (!GOOGLE_API_KEY) {
+  console.error("GOOGLE_API_KEY environment variable not set");
+  throw new Error("GOOGLE_API_KEY environment variable not set");
+}
+
+const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+
+// Safety settings
+const safetySettings = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+];
 
 interface SVGRequestBody {
   prompt: string;
@@ -11,10 +40,6 @@ interface SVGRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!OPENROUTER_API_KEY) {
-      console.error("OPENROUTER_API_KEY environment variable not set");
-      throw new Error("OPENROUTER_API_KEY environment variable not set");
-    }
     const body: SVGRequestBody = await request.json();
     const { prompt } = body;
 
@@ -26,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("Generating SVG for prompt:", prompt);
-    console.log("Using model:", OPENROUTER_MODEL);
+    console.log("Using model: gemini-2.0-flash");
 
     // Prepare the system message for SVG generation
     const systemMessage = `You are an expert at creating interactive SVG visualizations.
@@ -46,53 +71,58 @@ export async function POST(request: NextRequest) {
     The SVG should start with: <svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
     and end with: </svg>`;
 
-    // Prepare the messages for the API call
-    const messages = [
-      {
-        role: "system",
-        content: systemMessage,
-      },
-      {
-        role: "user",
-        content: `Generate an interactive and cool looking SVG visualization for: "${prompt}"
+    // Create the prompt for SVG generation
+    const svgPrompt = `Generate an interactive and cool looking SVG visualization for: "${prompt}"
 
-IMPORTANT: Your response must ONLY contain the SVG code, no markdown, no explanations, no additional text. Just the raw SVG code starting with <svg and ending with </svg>.`,
-      },
-    ];
+Guidelines:
+- Create an SVG that is 600px wide and 400px tall
+- Use vibrant colors and clear visual elements
+- Include interactive elements with hover effects where appropriate
+- Make sure the SVG is well-structured and valid
+- Include data-label attributes for interactive elements
+- The SVG should be educational and help visualize the concept
+- DO NOT include any explanations or text outside the SVG code
+- ONLY return the SVG code, nothing else
+- IMPORTANT: Your response must ONLY contain the SVG code, no markdown, no explanations
 
-    // Call the OpenRouter API using the exact format from the documentation
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://intellect.ai", // Replace with your actual domain
-        "X-Title": "Intellect AI SVG Generator"
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: messages,
+The SVG should start with: <svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+and end with: </svg>
+
+IMPORTANT: Your response must ONLY contain the SVG code, no markdown, no explanations, no additional text. Just the raw SVG code starting with <svg and ending with </svg>.`;
+
+    // Initialize the Gemini model
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      generationConfig: {
         temperature: 0.7,
-        max_tokens: 4000,
-      }),
+        maxOutputTokens: 4000,
+      },
+      safetySettings,
     });
 
-    console.log("OpenRouter API request sent with model:", OPENROUTER_MODEL);
+    console.log("Gemini API request sent with model: gemini-2.0-flash");
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenRouter API error:", errorData);
-      throw new Error(`OpenRouter API error: ${response.status}`);
+    // Generate the SVG content
+    const result = await model.generateContent(svgPrompt);
+    const response = result.response;
+
+    if (!response) {
+      throw new Error("No response received from the AI model.");
     }
 
-    const data = await response.json();
-
     // Extract the SVG from the response
-    let svgContent = data.choices[0].message.content;
-    console.log("Raw SVG response (first 100 chars):", svgContent.substring(0, 100));
+    let svgContent = response.text();
+    console.log(
+      "Raw SVG response (first 100 chars):",
+      svgContent.substring(0, 100)
+    );
 
     // Clean up the SVG content (remove markdown code blocks if present)
-    svgContent = svgContent.replace(/```svg\n/g, "").replace(/```xml\n/g, "").replace(/```html\n/g, "").replace(/```/g, "");
+    svgContent = svgContent
+      .replace(/```svg\n/g, "")
+      .replace(/```xml\n/g, "")
+      .replace(/```html\n/g, "")
+      .replace(/```/g, "");
 
     // Ensure the SVG starts and ends correctly
     if (!svgContent.trim().startsWith("<svg")) {
@@ -143,15 +173,35 @@ function generateFallbackSVG(prompt: string): string {
   // Determine the type of visualization based on keywords
   let svgType = "generic";
 
-  if (keywords.some(word => ["physics", "force", "motion", "newton"].includes(word))) {
+  if (
+    keywords.some((word) =>
+      ["physics", "force", "motion", "newton"].includes(word)
+    )
+  ) {
     svgType = "physics";
-  } else if (keywords.some(word => ["math", "equation", "formula", "calculus"].includes(word))) {
+  } else if (
+    keywords.some((word) =>
+      ["math", "equation", "formula", "calculus"].includes(word)
+    )
+  ) {
     svgType = "math";
-  } else if (keywords.some(word => ["biology", "cell", "organism", "dna"].includes(word))) {
+  } else if (
+    keywords.some((word) =>
+      ["biology", "cell", "organism", "dna"].includes(word)
+    )
+  ) {
     svgType = "biology";
-  } else if (keywords.some(word => ["chemistry", "molecule", "atom", "reaction"].includes(word))) {
+  } else if (
+    keywords.some((word) =>
+      ["chemistry", "molecule", "atom", "reaction"].includes(word)
+    )
+  ) {
     svgType = "chemistry";
-  } else if (keywords.some(word => ["history", "timeline", "event", "war", "revolution"].includes(word))) {
+  } else if (
+    keywords.some((word) =>
+      ["history", "timeline", "event", "war", "revolution"].includes(word)
+    )
+  ) {
     svgType = "history";
   }
 
@@ -251,13 +301,17 @@ function generateFallbackSVG(prompt: string): string {
         <line x1="370" y1="150" x2="340" y2="170" stroke="#e1e1e1" stroke-width="2" id="connection2" data-label="Connection"/>
         <line x1="230" y1="250" x2="260" y2="230" stroke="#e1e1e1" stroke-width="2" id="connection3" data-label="Connection"/>
         <line x1="370" y1="250" x2="340" y2="230" stroke="#e1e1e1" stroke-width="2" id="connection4" data-label="Connection"/>
-        <text x="300" y="200" font-family="Arial" font-size="16" fill="white" text-anchor="middle" id="main-text">${prompt.length > 20 ? prompt.substring(0, 20) + '...' : prompt}</text>
+        <text x="300" y="200" font-family="Arial" font-size="16" fill="white" text-anchor="middle" id="main-text">${
+          prompt.length > 20 ? prompt.substring(0, 20) + "..." : prompt
+        }</text>
         <text x="180" y="150" font-family="Arial" font-size="12" fill="white" text-anchor="middle" id="related1-text">Topic 1</text>
         <text x="420" y="150" font-family="Arial" font-size="12" fill="white" text-anchor="middle" id="related2-text">Topic 2</text>
         <text x="180" y="250" font-family="Arial" font-size="12" fill="white" text-anchor="middle" id="related3-text">Topic 3</text>
         <text x="420" y="250" font-family="Arial" font-size="12" fill="white" text-anchor="middle" id="related4-text">Topic 4</text>
         <text x="300" y="50" font-family="Arial" font-size="24" fill="white" text-anchor="middle" id="title">Interactive Visualization</text>
-        <text x="300" y="80" font-family="Arial" font-size="16" fill="white" text-anchor="middle" id="subtitle">${prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt}</text>
+        <text x="300" y="80" font-family="Arial" font-size="16" fill="white" text-anchor="middle" id="subtitle">${
+          prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
+        }</text>
       </svg>`;
   }
 }

@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   ChevronRight,
+  ChevronLeft,
   Home,
   History,
   Search,
@@ -65,7 +66,7 @@ export default function DashboardLayout({
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "intelect", href: "/dashboard/intelect", icon: MessageSquare },
+    { name: "Intellect", href: "/dashboard/intelect", icon: MessageSquare },
     { name: "Quiz", href: "/dashboard/quiz", icon: Brain },
     { name: "Progress", href: "/dashboard/progress", icon: BarChart },
     { name: "History", href: "/dashboard/history", icon: History },
@@ -77,17 +78,21 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Mobile sidebar toggle */}
-      {isMobile && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="fixed top-4 left-4 z-50 md:hidden"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
+      {/* Sidebar toggle - visible on mobile and desktop */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`fixed top-4 ${
+          isSidebarOpen ? "left-[260px]" : "left-4"
+        } z-50 transition-all duration-300`}
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      >
+        {isSidebarOpen ? (
+          <ChevronLeft className="h-5 w-5" />
+        ) : (
           <Menu className="h-5 w-5" />
-        </Button>
-      )}
+        )}
+      </Button>
 
       {/* Sidebar */}
       <AnimatePresence mode="wait">
@@ -124,18 +129,9 @@ export default function DashboardLayout({
                   />
                 </div>
                 <span className="text-lg font-bold group-hover:text-primary transition-colors duration-300">
-                  intelect
+                  Intellect
                 </span>
               </Link>
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsSidebarOpen(false)}
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              )}
             </div>
 
             {/* Navigation */}

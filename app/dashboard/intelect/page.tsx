@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import ChatInterface from '@/components/chat-interface';
+import React from "react";
+import ChatInterface from "@/components/chat-interface";
 
 export default function IntelectPage() {
   return (

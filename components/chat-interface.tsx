@@ -1,6 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
+import styled from "@emotion/styled";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,19 +17,39 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Send, Brain, User, Video, Zap, Sparkles, Loader2, PanelRight, PanelRightClose, Trash2 } from "lucide-react";
+import {
+  Send,
+  Brain,
+  User,
+  Video,
+  Zap,
+  Sparkles,
+  Loader2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { BookLoader } from "./book-loader";
+
+// Styled component for grid pattern background
+const GridBackground = styled.div`
+  background-size: 20px 20px;
+  background-image: linear-gradient(
+      to right,
+      rgba(70, 69, 246, 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(70, 69, 246, 0.05) 1px, transparent 1px);
+`;
 
 // Sample chat messages for demonstration
 const defaultMessages: ChatMessage[] = [
   {
     id: 1,
     role: "assistant",
-    content:
-      "Hi there! I'm your AI assistant. How can I help you today?",
+    content: "Hi there! I'm your AI assistant. How can I help you today?",
     timestamp: "18:49",
     isNewGroup: true,
-    dateMarker: "Today"
+    dateMarker: "Today",
   },
 ];
 
@@ -40,19 +65,49 @@ interface ChatMessage {
   isNewGroup?: boolean;
   dateMarker?: string;
   svgData?: string; // SVG content to display
+  svgHidden?: boolean; // Flag to indicate if SVG is hidden by user
+  svgGenerating?: boolean; // Flag to indicate if SVG is currently being generated
 }
 
 export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
+  // Apply markdown styles
+  useEffect(() => {
+    const styleElement = document.createElement("style");
+    styleElement.textContent = `
+      .markdown-content h1 { font-size: 1.5rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+      .markdown-content h2 { font-size: 1.25rem; font-weight: 600; margin-top: 0.75rem; margin-bottom: 0.5rem; }
+      .markdown-content h3 { font-size: 1.125rem; font-weight: 600; margin-top: 0.75rem; margin-bottom: 0.5rem; }
+      .markdown-content p { margin-bottom: 0.75rem; }
+      .markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+      .markdown-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+      .markdown-content li { margin-bottom: 0.25rem; }
+      .markdown-content pre { background-color: rgba(0, 0, 0, 0.05); padding: 0.75rem; border-radius: 0.375rem; overflow-x: auto; margin: 0.75rem 0; }
+      .markdown-content code { font-family: monospace; background-color: rgba(0, 0, 0, 0.05); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.875rem; }
+      .markdown-content blockquote { border-left: 4px solid rgba(70, 69, 246, 0.3); padding-left: 0.75rem; font-style: italic; margin: 0.75rem 0; }
+      .markdown-content a { color: #4645F6; text-decoration: none; }
+      .markdown-content a:hover { text-decoration: underline; }
+      .markdown-content table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+      .markdown-content th, .markdown-content td { border: 1px solid rgba(0, 0, 0, 0.1); padding: 0.5rem; text-align: left; }
+      .markdown-content th { background-color: rgba(0, 0, 0, 0.05); }
+      .markdown-content img { max-width: 100%; height: auto; border-radius: 0.375rem; margin: 0.75rem 0; }
+    `;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
   const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; parts: { text: string }[] }[]>([]);
+  const [chatHistory, setChatHistory] = useState<
+    { role: "user" | "model"; parts: { text: string }[] }[]
+  >([]);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [deepDiveEnabled, setDeepDiveEnabled] = useState(false);
   const [isFirstMessage, setIsFirstMessage] = useState(messages.length <= 1);
   const [generatingStatus, setGeneratingStatus] = useState("");
-  const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [isSvgLoading, setIsSvgLoading] = useState(false);
+  // We don't need the isSvgLoading state anymore as we're using message.svgGenerating
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // We no longer need API wrapper functions as we're making direct API calls
@@ -66,8 +121,8 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
   const splitIntoMultipleMessages = (content: string): string[] => {
     // Clean up any excessive formatting like **** or multiple asterisks
     let cleanedContent = content
-      .replace(/\*{2,}/g, '') // Remove multiple asterisks
-      .replace(/\*\s*\*\s*\*/g, '') // Remove patterns like * * *
+      .replace(/\*{2,}/g, "") // Remove multiple asterisks
+      .replace(/\*\s*\*\s*\*/g, "") // Remove patterns like * * *
       .trim();
 
     // Return as a single message instead of splitting by paragraphs
@@ -99,35 +154,39 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
       setTimeout(async () => {
         try {
           // First, get just the text response quickly
-          const textResponse = await fetch('/api/chat', {
-            method: 'POST',
+          const textResponse = await fetch("/api/chat", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               message: initialMessage,
               history: chatHistory,
-              useThinkingModel: false,  // Normal mode for initial message
+              useThinkingModel: false, // Normal mode for initial message
               generateSVG: false, // Don't generate SVG yet for faster text response
-              isFollowUp: false,    // First message
+              isFollowUp: false, // First message
             }),
           });
 
           if (!textResponse.ok) {
-            throw new Error(`API call failed with status: ${textResponse.status}`);
+            throw new Error(
+              `API call failed with status: ${textResponse.status}`
+            );
           }
 
           const textData = await textResponse.json();
 
           // Update chat history for future API calls
-          setChatHistory(prev => [
+          setChatHistory((prev) => [
             ...prev,
-            { role: 'user', parts: [{ text: initialMessage }] },
-            { role: 'model', parts: [{ text: textData.responseText }] }
+            { role: "user", parts: [{ text: initialMessage }] },
+            { role: "model", parts: [{ text: textData.responseText }] },
           ]);
 
           // Split the response into multiple messages
-          const responseMessages = splitIntoMultipleMessages(textData.responseText);
+          const responseMessages = splitIntoMultipleMessages(
+            textData.responseText
+          );
 
           // Create the AI message without SVG data first
           const aiMessage: ChatMessage = {
@@ -147,43 +206,42 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
 
           // Wait a moment for the text to be visible before starting SVG generation
           setTimeout(() => {
-            // Show SVG loading animation
-            setIsSvgLoading(true);
-            setSidebarVisible(true);
+            // Update the status message
             setGeneratingStatus("Generating visualization...");
 
             // Now get the SVG in a non-blocking way
-            fetch('/api/svg', {
-              method: 'POST',
+            fetch("/api/svg", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 prompt: initialMessage,
               }),
             })
-            .then(response => {
-              if (response.ok) {
-                return response.json();
-              }
-              throw new Error('SVG generation failed');
-            })
-            .then(svgResult => {
-              // Update the message with SVG data
-              setMessages(prev => prev.map(msg =>
-                msg.id === aiMessage.id
-                  ? { ...msg, svgData: svgResult.svgData }
-                  : msg
-              ));
-              console.log("SVG generation complete");
-            })
-            .catch(svgError => {
-              console.error('Error generating SVG:', svgError);
-            })
-            .finally(() => {
-              setIsSvgLoading(false);
-              setGeneratingStatus("");
-            });
+              .then((response) => {
+                if (response.ok) {
+                  return response.json();
+                }
+                throw new Error("SVG generation failed");
+              })
+              .then((svgResult) => {
+                // Update the message with SVG data
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === aiMessage.id
+                      ? { ...msg, svgData: svgResult.svgData }
+                      : msg
+                  )
+                );
+                console.log("SVG generation complete");
+              })
+              .catch((svgError) => {
+                console.error("Error generating SVG:", svgError);
+              })
+              .finally(() => {
+                setGeneratingStatus("");
+              });
           }, 1000); // Wait 1 second after text appears before starting SVG generation
         } catch (error) {
           console.error("Error processing AI response:", error);
@@ -191,7 +249,8 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
           const errorMessage: ChatMessage = {
             id: messages.length + 2,
             role: "assistant",
-            content: "Sorry, I encountered an error while processing your request. Please try again.",
+            content:
+              "Sorry, I encountered an error while processing your request. Please try again.",
             timestamp: new Date().toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -199,7 +258,6 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
           };
           setMessages((prev) => [...prev, errorMessage]);
           setIsTyping(false);
-          setIsSvgLoading(false);
         }
       }, 1000);
     }
@@ -209,45 +267,40 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
     scrollToBottom();
   }, [messages]);
 
-  // Auto-hide sidebar when no SVG is available
-  useEffect(() => {
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant' && !lastMessage.svgData && !isSvgLoading) {
-        setSidebarVisible(false);
-      }
-    }
-  }, [messages, isSvgLoading]);
+  // Removed sidebar auto-hide effect as SVGs are now displayed in the chat
 
   // Persist chat history to localStorage
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem('chatHistory', JSON.stringify(messages));
+      localStorage.setItem("chatHistory", JSON.stringify(messages));
     }
   }, [messages]);
 
   // Load chat history from localStorage on initial load
   useEffect(() => {
-    const savedHistory = localStorage.getItem('chatHistory');
+    const savedHistory = localStorage.getItem("chatHistory");
     if (savedHistory && messages.length === 0) {
       try {
         const parsedHistory = JSON.parse(savedHistory);
         setMessages(parsedHistory);
 
         // Also update the chatHistory state for API calls
-        const apiHistory: { role: "user" | "model"; parts: { text: string; }[]; }[] = [];
+        const apiHistory: {
+          role: "user" | "model";
+          parts: { text: string }[];
+        }[] = [];
         for (let i = 0; i < parsedHistory.length; i++) {
           const msg = parsedHistory[i];
-          if (msg.role === 'user') {
-            apiHistory.push({ role: 'user', parts: [{ text: msg.content }] });
-          } else if (msg.role === 'assistant') {
-            apiHistory.push({ role: 'model', parts: [{ text: msg.content }] });
+          if (msg.role === "user") {
+            apiHistory.push({ role: "user", parts: [{ text: msg.content }] });
+          } else if (msg.role === "assistant") {
+            apiHistory.push({ role: "model", parts: [{ text: msg.content }] });
           }
         }
         setChatHistory(apiHistory);
       } catch (error) {
-        console.error('Error loading chat history:', error);
-        localStorage.removeItem('chatHistory');
+        console.error("Error loading chat history:", error);
+        localStorage.removeItem("chatHistory");
       }
     }
   }, []);
@@ -270,48 +323,55 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      isNewGroup: messages.length > 0 &&
+      isNewGroup:
+        messages.length > 0 &&
         messages[messages.length - 1].role !== "user" &&
-        new Date().getTime() - new Date().setHours(
-          parseInt(messages[messages.length - 1].timestamp.split(":")[0]),
-          parseInt(messages[messages.length - 1].timestamp.split(":")[1])
-        ) > 5 * 60 * 1000, // 5 minutes difference
+        new Date().getTime() -
+          new Date().setHours(
+            parseInt(messages[messages.length - 1].timestamp.split(":")[0]),
+            parseInt(messages[messages.length - 1].timestamp.split(":")[1])
+          ) >
+          5 * 60 * 1000, // 5 minutes difference
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
     setShowDeepDive(false);
-    setGeneratingStatus(deepDiveEnabled ? "Generating deep dive response..." : "Thinking...");
+    setGeneratingStatus(
+      deepDiveEnabled ? "Generating deep dive response..." : "Thinking..."
+    );
 
     // Call the text generation API immediately
     setTimeout(async () => {
       try {
         // First, get just the text response quickly
-        const textResponse = await fetch('/api/chat', {
-          method: 'POST',
+        const textResponse = await fetch("/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             message: currentInput,
             history: chatHistory,
-            useThinkingModel: deepDiveEnabled,  // Use Gemini 2.5 Pro for Deep Dive
+            useThinkingModel: deepDiveEnabled, // Use Gemini 2.5 Pro for Deep Dive
             generateSVG: false, // Don't generate SVG yet for faster text response
-            isFollowUp: !isFirstMessage,    // Indicate if this is a follow-up message
+            isFollowUp: !isFirstMessage, // Indicate if this is a follow-up message
           }),
         });
 
         if (!textResponse.ok) {
-          throw new Error(`API call failed with status: ${textResponse.status}`);
+          throw new Error(
+            `API call failed with status: ${textResponse.status}`
+          );
         }
 
         const textData = await textResponse.json();
 
         // Update chat history for future API calls
-        setChatHistory(prev => [
+        setChatHistory((prev) => [
           ...prev,
-          { role: 'user', parts: [{ text: currentInput }] },
-          { role: 'model', parts: [{ text: textData.responseText }] }
+          { role: "user", parts: [{ text: currentInput }] },
+          { role: "model", parts: [{ text: textData.responseText }] },
         ]);
 
         // No longer first message after this
@@ -320,7 +380,9 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
         setDeepDiveEnabled(false);
 
         // Split the response into multiple messages
-        const responseMessages = splitIntoMultipleMessages(textData.responseText);
+        const responseMessages = splitIntoMultipleMessages(
+          textData.responseText
+        );
 
         // Create the AI message without SVG data first
         const aiMessage: ChatMessage = {
@@ -332,6 +394,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
             minute: "2-digit",
           }),
           svgData: undefined, // No SVG data yet
+          svgGenerating: shouldGenerateSVG, // Set to true if we'll be generating an SVG
         };
 
         // Add the message to the chat
@@ -342,43 +405,46 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
         if (shouldGenerateSVG) {
           // Delay SVG generation to ensure text is visible first
           setTimeout(() => {
-            // Show SVG loading animation
-            setIsSvgLoading(true);
-            setSidebarVisible(true);
+            // Update the status message
             setGeneratingStatus("Generating visualization...");
 
             // Now get the SVG in a non-blocking way
-            fetch('/api/svg', {
-              method: 'POST',
+            fetch("/api/svg", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 prompt: currentInput,
               }),
             })
-            .then(response => {
-              if (response.ok) {
-                return response.json();
-              }
-              throw new Error('SVG generation failed');
-            })
-            .then(svgResult => {
-              // Update the message with SVG data
-              setMessages(prev => prev.map(msg =>
-                msg.id === aiMessage.id
-                  ? { ...msg, svgData: svgResult.svgData }
-                  : msg
-              ));
-              console.log("SVG generation complete");
-            })
-            .catch(svgError => {
-              console.error('Error generating SVG:', svgError);
-            })
-            .finally(() => {
-              setIsSvgLoading(false);
-              setGeneratingStatus("");
-            });
+              .then((response) => {
+                if (response.ok) {
+                  return response.json();
+                }
+                throw new Error("SVG generation failed");
+              })
+              .then((svgResult) => {
+                // Update the message with SVG data
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === aiMessage.id
+                      ? {
+                          ...msg,
+                          svgData: svgResult.svgData,
+                          svgGenerating: false,
+                        }
+                      : msg
+                  )
+                );
+                console.log("SVG generation complete");
+              })
+              .catch((svgError) => {
+                console.error("Error generating SVG:", svgError);
+              })
+              .finally(() => {
+                setGeneratingStatus("");
+              });
           }, 1000); // Wait 1 second after text appears before starting SVG generation
         }
       } catch (error) {
@@ -387,7 +453,8 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
         const errorMessage: ChatMessage = {
           id: messages.length + 2,
           role: "assistant",
-          content: "Sorry, I encountered an error while processing your request. Please try again.",
+          content:
+            "Sorry, I encountered an error while processing your request. Please try again.",
           timestamp: new Date().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -395,335 +462,433 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
         };
         setMessages((prev) => [...prev, errorMessage]);
         setIsTyping(false);
-        setIsSvgLoading(false);
       }
     }, 1000);
   };
 
   return (
-    <Card className={`h-full border-0 rounded-none shadow-none bg-background text-foreground grid ${sidebarVisible ? 'grid-cols-[1fr,600px]' : 'grid-cols-[1fr,0px]'} overflow-hidden transition-all duration-300`}>
+    <Card className="h-full border-0 rounded-none shadow-none bg-background text-foreground overflow-hidden">
       {/* Main chat area */}
       <div className="flex flex-col h-full">
         <CardHeader className="border-b border-border px-6 py-3 bg-background shadow-sm">
-        <div className="flex justify-between items-center w-full">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Avatar className="h-10 w-10 border-2 border-primary/20">
-                <AvatarImage src="/metallic-gaze.png" />
-                <AvatarFallback className="bg-primary/10">
-                  <Brain className="h-5 w-5 text-primary" />
-                </AvatarFallback>
-              </Avatar>
-              <motion.div
-                className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            </div>
-            <div>
-              <CardTitle className="text-base font-medium">intelect AI</CardTitle>
-              <p className="text-xs text-muted-foreground">Active now</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-9 w-9"
-              onClick={() => {
-                if (window.confirm('Are you sure you want to clear the chat history?')) {
-                  localStorage.removeItem('chatHistory');
-                  setMessages([]);
-                  setChatHistory([]);
-                  setIsFirstMessage(true);
-                }
-              }}
-              title="Clear chat history"
-            >
-              <Trash2 className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
-              <Video className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-9 w-9 relative"
-              onClick={() => setSidebarVisible(!sidebarVisible)}
-              title={sidebarVisible ? "Hide visualization panel" : "Show visualization panel"}
-            >
-              {sidebarVisible ? (
-                <PanelRightClose className="h-5 w-5" />
-              ) : (
-                <PanelRight className="h-5 w-5" />
-              )}
-              {messages.length > 0 && messages[messages.length - 1].svgData && !sidebarVisible && (
-                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary"></span>
-              )}
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto p-6 bg-background">
-        <div className="space-y-4 max-w-3xl mx-auto">
-          <AnimatePresence initial={false}>
-            {messages.map((message, index) => (
-              <React.Fragment key={message.id}>
-                {/* Date marker */}
-                {message.dateMarker && (
-                  <div className="flex justify-center my-4">
-                    <div className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-full">
-                      {message.dateMarker}
-                    </div>
-                  </div>
-                )}
-
-                {/* Time marker for new message groups */}
-                {message.isNewGroup && !message.dateMarker && (
-                  <div className="flex justify-center my-3">
-                    <div className="text-muted-foreground text-xs">
-                      {new Date().toLocaleString('en-US', { weekday: 'short' })} {message.timestamp}
-                    </div>
-                  </div>
-                )}
-
+          <div className="flex justify-between items-center w-full">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Avatar className="h-10 w-10 border-2 border-primary/20">
+                  <AvatarImage src="/metallic-gaze.png" />
+                  <AvatarFallback className="bg-primary/10">
+                    <Brain className="h-5 w-5 text-primary" />
+                  </AvatarFallback>
+                </Avatar>
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className={`flex ${
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  } ${index > 0 && messages[index-1].role === message.role && !message.isNewGroup ? "mt-1" : "mt-3"}`}
-                >
-                  <div className={`flex items-start gap-2 ${message.role === "assistant" ? "max-w-[90%]" : "max-w-[80%]"}`}>
-                    {/* AI Avatar - only show for first message in a group */}
-                    {message.role === "assistant" && (index === 0 || messages[index-1].role !== "assistant" || message.isNewGroup) && (
-                      <Avatar className="h-8 w-8 mt-1">
-                        <AvatarImage src="/metallic-gaze.png" />
-                        <AvatarFallback className="bg-primary/10">
-                          <Brain className="h-4 w-4 text-primary" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-
-                    {/* Spacer for consecutive AI messages */}
-                    {message.role === "assistant" && index > 0 && messages[index-1].role === "assistant" && !message.isNewGroup && (
-                      <div className="w-8"></div>
-                    )}
-
-                    <div
-                      className={`${message.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm p-3"
-                        : "bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm p-4"
-                      } ${index > 0 && messages[index-1].role === message.role && !message.isNewGroup
-                        ? (message.role === "user" ? "rounded-tr-2xl" : "rounded-tl-2xl")
-                        : ""}`}
-                    >
-                      <div>
-                        <p className={`${message.role === "assistant" ? "text-sm leading-relaxed whitespace-pre-line" : "text-sm"}`}>{message.content}</p>
-
-                        {/* SVGs are now displayed in the side panel */}
-                      </div>
-                    </div>
-
-                    {/* User Avatar - only show for first message in a group */}
-                    {message.role === "user" && (index === 0 || messages[index-1].role !== "user" || message.isNewGroup) && (
-                      <Avatar className="h-8 w-8 mt-1">
-                        <AvatarImage src="/abstract-user-icon.png" />
-                        <AvatarFallback className="bg-primary">
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-
-                    {/* Spacer for consecutive user messages */}
-                    {message.role === "user" && index > 0 && messages[index-1].role === "user" && !message.isNewGroup && (
-                      <div className="w-8"></div>
-                    )}
-                  </div>
-                </motion.div>
-              </React.Fragment>
-            ))}
-          </AnimatePresence>
-          {isTyping && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex justify-start mt-1"
-            >
-              <div className="flex items-start gap-2 max-w-[90%]">
-                {messages.length > 0 && messages[messages.length-1].role === "assistant" ? (
-                  <div className="w-8"></div>
-                ) : (
-                  <Avatar className="h-8 w-8 mt-1">
-                    <AvatarImage src="/metallic-gaze.png" />
-                    <AvatarFallback className="bg-primary/10">
-                      <Brain className="h-4 w-4 text-primary" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <div className="p-4 bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm">
-                  <div className="flex flex-col items-center justify-center">
-                    <BookLoader
-                      size="40px"
-                      color="#4645F6"
-                      textColor="#4645F6"
-                      text={generatingStatus || "Thinking"}
-                    />
-                  </div>
-                </div>
+                  className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
               </div>
-            </motion.div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </CardContent>
-      <CardFooter className="border-t border-border p-4 bg-background shadow-sm">
-        <form
-          onSubmit={handleSubmit}
-          className="flex w-full max-w-3xl mx-auto gap-2"
-        >
-          <div className="relative flex-1">
-            <Input
-              placeholder="Type a message..."
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                setShowDeepDive(!!e.target.value.trim());
-              }}
-              disabled={isTyping}
-              className="pl-4 pr-10 py-3 rounded-full border-border bg-input text-foreground shadow-sm focus:shadow-md transition-all duration-200 placeholder:text-muted-foreground"
-            />
-            {!isTyping && input.trim() && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-primary"
-              >
-                <Zap className="h-5 w-5 opacity-70" />
-              </motion.div>
-            )}
-          </div>
-          {showDeepDive && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center space-x-1 bg-muted/30 px-3 py-1.5 rounded-full">
-                <button
-                  type="button"
-                  onClick={() => setDeepDiveEnabled(!deepDiveEnabled)}
-                  className={`relative rounded-full h-5 w-10 flex items-center transition-colors ${deepDiveEnabled ? 'bg-primary' : 'bg-muted'}`}
-                  disabled={isTyping}
-                >
-                  <motion.div
-                    className="absolute h-4 w-4 rounded-full bg-white shadow-sm"
-                    animate={{ x: deepDiveEnabled ? 5 : 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                </button>
-                <span className="text-xs font-medium">
-                  {deepDiveEnabled ? (
-                    <span className="flex items-center gap-1 text-primary">
-                      <Sparkles className="h-3 w-3" />
-                      Deep Dive
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Deep Dive</span>
-                  )}
-                </span>
+              <div>
+                <CardTitle className="text-base font-medium">
+                  Intellect AI
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Active now</p>
               </div>
             </div>
-          )}
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isTyping || !input.trim()}
-            className="h-12 w-12 rounded-full shadow-sm bg-primary hover:bg-primary/90"
-          >
-            <Send className="h-5 w-5" />
-          </Button>
-        </form>
-      </CardFooter>
-      </div>
-      {/* SVG visualization and description panel - only visible when SVG exists or is loading */}
-      <div className={`${sidebarVisible ? 'w-[600px]' : 'w-0'} border-l border-border flex flex-col h-full overflow-hidden transition-all duration-300`}>
-        {/* Current SVG visualization */}
-        {isSvgLoading ? (
-          <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-border flex justify-between items-center">
-              <h3 className="text-lg font-medium">Generating Visualization</h3>
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            </div>
-            <div className="flex-3 overflow-auto p-4 flex items-center justify-center h-[75%]">
-              <div className="text-center">
-                <div className="relative w-[400px] h-[300px] bg-muted/30 rounded-lg flex flex-col items-center justify-center overflow-hidden">
-                  {/* Background animation */}
-                  <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/20 to-transparent animate-pulse"></div>
-                    <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-primary/10 animate-ping [animation-duration:3s]"></div>
-                    <div className="absolute bottom-1/4 right-1/4 w-24 h-24 rounded-full bg-primary/10 animate-ping [animation-duration:2.5s] [animation-delay:0.5s]"></div>
-                  </div>
-
-                  {/* Main content */}
-                  <Sparkles className="h-16 w-16 text-primary animate-pulse" />
-                  <div className="mt-6 flex flex-col items-center z-10">
-                    <div className="flex gap-2 items-center">
-                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
-                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.3s]"></div>
-                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.6s]"></div>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-4 font-medium">Creating visualization...</p>
-                    <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 border-t border-border h-[25%]">
-              <h3 className="text-sm font-medium mb-2">Description</h3>
-              <div className="animate-pulse space-y-2">
-                <div className="h-3 bg-muted/50 rounded w-3/4"></div>
-                <div className="h-3 bg-muted/50 rounded w-1/2"></div>
-                <div className="h-3 bg-muted/50 rounded w-5/6"></div>
-              </div>
-            </div>
-          </div>
-        ) : messages.length > 0 && messages[messages.length - 1].svgData ? (
-          <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-border flex justify-between items-center">
-              <h3 className="text-lg font-medium">Visualization</h3>
+            <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => setSidebarVisible(false)}
+                className="rounded-full h-9 w-9"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Are you sure you want to clear the chat history?"
+                    )
+                  ) {
+                    localStorage.removeItem("chatHistory");
+                    setMessages([]);
+                    setChatHistory([]);
+                    setIsFirstMessage(true);
+                  }
+                }}
+                title="Clear chat history"
               >
-                <PanelRightClose className="h-4 w-4" />
+                <Trash2 className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full h-9 w-9"
+              >
+                <Video className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex-3 overflow-auto p-4 flex items-center justify-center h-[75%]">
-              <div
-                className="rounded-lg overflow-hidden border border-border shadow-md max-w-full max-h-full"
-                dangerouslySetInnerHTML={{ __html: messages[messages.length - 1].svgData || '' }}
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 overflow-y-auto p-6 bg-background">
+          <div className="space-y-4 max-w-3xl mx-auto">
+            <AnimatePresence initial={false}>
+              {messages.map((message, index) => (
+                <React.Fragment key={message.id}>
+                  {/* Date marker */}
+                  {message.dateMarker && (
+                    <div className="flex justify-center my-4">
+                      <div className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-full">
+                        {message.dateMarker}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Time marker for new message groups */}
+                  {message.isNewGroup && !message.dateMarker && (
+                    <div className="flex justify-center my-3">
+                      <div className="text-muted-foreground text-xs">
+                        {new Date().toLocaleString("en-US", {
+                          weekday: "short",
+                        })}{" "}
+                        {message.timestamp}
+                      </div>
+                    </div>
+                  )}
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className={`flex ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    } ${
+                      index > 0 &&
+                      messages[index - 1].role === message.role &&
+                      !message.isNewGroup
+                        ? "mt-1"
+                        : "mt-3"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-start gap-2 ${
+                        message.role === "assistant"
+                          ? "max-w-[90%]"
+                          : "max-w-[80%]"
+                      }`}
+                    >
+                      {/* AI Avatar - only show for first message in a group */}
+                      {message.role === "assistant" &&
+                        (index === 0 ||
+                          messages[index - 1].role !== "assistant" ||
+                          message.isNewGroup) && (
+                          <Avatar className="h-8 w-8 mt-1">
+                            <AvatarImage src="/metallic-gaze.png" />
+                            <AvatarFallback className="bg-primary/10">
+                              <Brain className="h-4 w-4 text-primary" />
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+
+                      {/* Spacer for consecutive AI messages */}
+                      {message.role === "assistant" &&
+                        index > 0 &&
+                        messages[index - 1].role === "assistant" &&
+                        !message.isNewGroup && <div className="w-8"></div>}
+
+                      <div
+                        className={`${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm p-3"
+                            : "bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm p-4"
+                        } ${
+                          index > 0 &&
+                          messages[index - 1].role === message.role &&
+                          !message.isNewGroup
+                            ? message.role === "user"
+                              ? "rounded-tr-2xl"
+                              : "rounded-tl-2xl"
+                            : ""
+                        }`}
+                      >
+                        <div>
+                          {message.role === "assistant" ? (
+                            <div className="markdown-content text-sm leading-relaxed">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                              >
+                                {message.content}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            <p className="text-sm">{message.content}</p>
+                          )}
+
+                          {/* Display SVG or loading animation */}
+                          {message.role === "assistant" &&
+                            (message.svgData || message.svgGenerating) && (
+                              <div className="mt-4 rounded-lg overflow-hidden border border-border shadow-md max-w-full">
+                                <div className="p-2 bg-muted/30 border-b border-border flex justify-between items-center">
+                                  <h3 className="text-xs font-medium">
+                                    {message.svgGenerating
+                                      ? "Generating Visualization"
+                                      : "Visualization"}
+                                  </h3>
+                                  {message.svgGenerating ? (
+                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 rounded-full"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Update the message to hide the SVG
+                                        setMessages((prev) =>
+                                          prev.map((msg) =>
+                                            msg.id === message.id
+                                              ? {
+                                                  ...msg,
+                                                  svgData: undefined,
+                                                  svgHidden: true,
+                                                }
+                                              : msg
+                                          )
+                                        );
+                                      }}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <div className="p-3 flex items-center justify-center bg-white/5">
+                                  {message.svgGenerating ? (
+                                    <div className="relative w-[400px] h-[300px] bg-muted/30 rounded-lg flex flex-col items-center justify-center overflow-hidden">
+                                      {/* Canvas-like grid background */}
+                                      <GridBackground className="absolute inset-0 opacity-5" />
+
+                                      {/* Background animation */}
+                                      <div className="absolute inset-0 opacity-10">
+                                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/20 to-transparent animate-pulse"></div>
+                                        <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-primary/10 animate-ping [animation-duration:3s]"></div>
+                                        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 rounded-full bg-primary/10 animate-ping [animation-duration:2.5s] [animation-delay:0.5s]"></div>
+                                      </div>
+
+                                      {/* SVG elements being drawn animation */}
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <svg
+                                          width="200"
+                                          height="200"
+                                          viewBox="0 0 200 200"
+                                          className="opacity-20"
+                                        >
+                                          <motion.circle
+                                            cx="100"
+                                            cy="100"
+                                            r="50"
+                                            stroke="#4645F6"
+                                            strokeWidth="2"
+                                            fill="none"
+                                            initial={{ pathLength: 0 }}
+                                            animate={{ pathLength: 1 }}
+                                            transition={{
+                                              duration: 2,
+                                              repeat: Infinity,
+                                            }}
+                                          />
+                                          <motion.rect
+                                            x="70"
+                                            y="70"
+                                            width="60"
+                                            height="60"
+                                            stroke="#4645F6"
+                                            strokeWidth="2"
+                                            fill="none"
+                                            initial={{ pathLength: 0 }}
+                                            animate={{ pathLength: 1 }}
+                                            transition={{
+                                              duration: 2,
+                                              delay: 0.5,
+                                              repeat: Infinity,
+                                            }}
+                                          />
+                                          <motion.path
+                                            d="M50,150 Q100,50 150,150"
+                                            stroke="#4645F6"
+                                            strokeWidth="2"
+                                            fill="none"
+                                            initial={{ pathLength: 0 }}
+                                            animate={{ pathLength: 1 }}
+                                            transition={{
+                                              duration: 2,
+                                              delay: 1,
+                                              repeat: Infinity,
+                                            }}
+                                          />
+                                        </svg>
+                                      </div>
+
+                                      {/* Center content */}
+                                      <Sparkles className="h-16 w-16 text-primary animate-pulse z-10" />
+                                      <p className="text-sm text-muted-foreground mt-4 font-medium z-10">
+                                        Creating visualization...
+                                      </p>
+                                      <div className="flex gap-2 items-center mt-2 z-10">
+                                        <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                                        <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.3s]"></div>
+                                        <div className="h-2 w-2 rounded-full bg-primary animate-pulse [animation-delay:0.6s]"></div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div
+                                      className="max-w-full"
+                                      dangerouslySetInnerHTML={{
+                                        __html: message.svgData || "",
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                                <div className="p-2 bg-muted/10 border-t border-border">
+                                  <p className="text-xs text-muted-foreground">
+                                    {message.svgGenerating ? (
+                                      "Generating a custom visualization for your query..."
+                                    ) : (
+                                      <>
+                                        <span className="font-medium">
+                                          Tip:
+                                        </span>{" "}
+                                        Hover over elements to see more details
+                                      </>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
+                      {/* User Avatar - only show for first message in a group */}
+                      {message.role === "user" &&
+                        (index === 0 ||
+                          messages[index - 1].role !== "user" ||
+                          message.isNewGroup) && (
+                          <Avatar className="h-8 w-8 mt-1">
+                            <AvatarImage src="/abstract-user-icon.png" />
+                            <AvatarFallback className="bg-primary">
+                              <User className="h-4 w-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+
+                      {/* Spacer for consecutive user messages */}
+                      {message.role === "user" &&
+                        index > 0 &&
+                        messages[index - 1].role === "user" &&
+                        !message.isNewGroup && <div className="w-8"></div>}
+                    </div>
+                  </motion.div>
+                </React.Fragment>
+              ))}
+            </AnimatePresence>
+            {isTyping && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-start mt-1"
+              >
+                <div className="flex items-start gap-2 max-w-[90%]">
+                  {messages.length > 0 &&
+                  messages[messages.length - 1].role === "assistant" ? (
+                    <div className="w-8"></div>
+                  ) : (
+                    <Avatar className="h-8 w-8 mt-1">
+                      <AvatarImage src="/metallic-gaze.png" />
+                      <AvatarFallback className="bg-primary/10">
+                        <Brain className="h-4 w-4 text-primary" />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className="p-4 bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm">
+                    <div className="flex flex-col items-center justify-center">
+                      <BookLoader
+                        size="40px"
+                        color="#4645F6"
+                        textColor="#4645F6"
+                        text={generatingStatus || "Thinking"}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </CardContent>
+        <CardFooter className="border-t border-border p-4 bg-background shadow-sm">
+          <form
+            onSubmit={handleSubmit}
+            className="flex w-full max-w-3xl mx-auto gap-2"
+          >
+            <div className="relative flex-1">
+              <Input
+                placeholder="Type a message..."
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  setShowDeepDive(!!e.target.value.trim());
+                }}
+                disabled={isTyping}
+                className="pl-4 pr-10 py-3 rounded-full border-border bg-input text-foreground shadow-sm focus:shadow-md transition-all duration-200 placeholder:text-muted-foreground"
               />
+              {!isTyping && input.trim() && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-primary"
+                >
+                  <Zap className="h-5 w-5 opacity-70" />
+                </motion.div>
+              )}
             </div>
-            <div className="p-4 border-t border-border h-[25%]">
-              <h3 className="text-sm font-medium mb-2">Description</h3>
-              <p className="text-sm text-muted-foreground">
-                This visualization illustrates {messages.length > 0 && messages[messages.length - 1].content.substring(0, 50)}...
-              </p>
-              <div className="mt-3">
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium">Tip:</span> Hover over elements to see more details. The visualization is interactive.
-                </p>
+            {showDeepDive && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center space-x-1 bg-muted/30 px-3 py-1.5 rounded-full">
+                  <button
+                    type="button"
+                    onClick={() => setDeepDiveEnabled(!deepDiveEnabled)}
+                    className={`relative rounded-full h-5 w-10 flex items-center transition-colors ${
+                      deepDiveEnabled ? "bg-primary" : "bg-muted"
+                    }`}
+                    disabled={isTyping}
+                  >
+                    <motion.div
+                      className="absolute h-4 w-4 rounded-full bg-white shadow-sm"
+                      animate={{ x: deepDiveEnabled ? 5 : 1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 30,
+                      }}
+                    />
+                  </button>
+                  <span className="text-xs font-medium">
+                    {deepDiveEnabled ? (
+                      <span className="flex items-center gap-1 text-primary">
+                        <Sparkles className="h-3 w-3" />
+                        Deep Dive
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Deep Dive</span>
+                    )}
+                  </span>
+                </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full p-6 text-muted-foreground">
-            <div className="text-center">
-              <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>Ask a question to generate a visualization</p>
-            </div>
-          </div>
-        )}
+            )}
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isTyping || !input.trim()}
+              className="h-12 w-12 rounded-full shadow-sm bg-primary hover:bg-primary/90"
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </form>
+        </CardFooter>
       </div>
     </Card>
   );
