@@ -37,9 +37,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { FunctionSquare as Function } from "lucide-react";
+// Function import removed
 import { BookLoader } from "./book-loader";
-import MathVisualization from "./math-visualization";
+// Math visualization removed
 
 // Styled component for grid pattern background
 const GridBackground = styled.div`
@@ -79,8 +79,7 @@ interface ChatMessage {
   svgData?: string; // SVG content to display
   svgHidden?: boolean; // Flag to indicate if SVG is hidden by user
   svgGenerating?: boolean; // Flag to indicate if SVG is currently being generated
-  visualizationId?: string; // ID of the math visualization
-  visualizationStatus?: string; // Status of the math visualization
+  // Math visualization fields removed
 }
 
 export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
@@ -596,19 +595,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
               >
                 <Trash2 className="h-5 w-5" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full h-9 w-9"
-                title="Math visualizations"
-                onClick={() => {
-                  // Open math visualizations panel
-                  // This is a placeholder for future implementation
-                  alert('Math visualizations feature is coming soon!');
-                }}
-              >
-                <Function className="h-5 w-5" />
-              </Button>
+              {/* Math visualizations button removed */}
             </div>
           </div>
         </CardHeader>
@@ -703,12 +690,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                                 {message.content}
                               </ReactMarkdown>
 
-                              {/* Display math visualization if available */}
-                              {message.visualizationId && (
-                                <div className="mt-4">
-                                  <MathVisualization visualizationId={message.visualizationId} />
-                                </div>
-                              )}
+                              {/* Math visualization display removed */}
                             </div>
                           ) : (
                             <p className="text-sm">{message.content}</p>
@@ -1035,135 +1017,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
               </div>
             )}
             <div className="flex gap-2">
-              <Button
-                type="button"
-                size="icon"
-                disabled={isTyping || !input.trim()}
-                className="h-12 w-12 rounded-full shadow-sm bg-secondary hover:bg-secondary/90"
-                title="Generate math visualization"
-                onClick={() => {
-                  if (!input.trim()) return;
-
-                  // Store the current input
-                  const currentInput = input;
-
-                  // Generate UUIDs for the conversation and messages
-                  const conversationId = generateUUID();
-                  const userMessageId = generateUUID();
-                  const aiMessageId = generateUUID();
-
-                  // Add user message
-                  const userMessage: ChatMessage = {
-                    id: messages.length + 1,
-                    uuid: userMessageId,
-                    role: "user",
-                    content: input,
-                    timestamp: new Date().toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }),
-                  };
-                  setMessages((prev) => [...prev, userMessage]);
-                  setInput("");
-
-                  // Create a placeholder for the AI response
-                  const aiMessage: ChatMessage = {
-                    id: messages.length + 2,
-                    uuid: aiMessageId,
-                    role: "assistant",
-                    content: "I'll create a math visualization for you. This may take a moment...",
-                    timestamp: new Date().toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }),
-                    visualizationStatus: "pending",
-                  };
-                  setMessages((prev) => [...prev, aiMessage]);
-
-                  // Call the math visualization API
-                  fetch("/api/math-visualization/create", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      conversationId: conversationId,
-                      messageId: aiMessageId,
-                      prompt: currentInput,
-                    }),
-                  })
-                    .then((response) => {
-                      if (!response.ok) {
-                        throw new Error(`API call failed with status: ${response.status}`);
-                      }
-                      return response.json();
-                    })
-                    .then((data) => {
-                      // Update the message with the visualization ID
-                      setMessages((prev) =>
-                        prev.map((msg) =>
-                          msg.id === aiMessage.id
-                            ? {
-                                ...msg,
-                                visualizationId: data.visualizationId,
-                                visualizationStatus: data.status,
-                              }
-                            : msg
-                        )
-                      );
-
-                      // Start polling for status updates
-                      const pollStatus = () => {
-                        fetch(`/api/math-visualization/status/${data.visualizationId}`)
-                          .then((response) => response.json())
-                          .then((statusData) => {
-                            // Update the message with the latest status
-                            setMessages((prev) =>
-                              prev.map((msg) =>
-                                msg.id === aiMessage.id
-                                  ? {
-                                      ...msg,
-                                      visualizationStatus: statusData.status,
-                                    }
-                                  : msg
-                              )
-                            );
-
-                            // Continue polling if not completed or failed
-                            if (
-                              statusData.status !== "completed" &&
-                              statusData.status !== "failed"
-                            ) {
-                              setTimeout(pollStatus, 5000);
-                            }
-                          })
-                          .catch((error) => {
-                            console.error("Error polling visualization status:", error);
-                          });
-                      };
-
-                      // Start polling
-                      setTimeout(pollStatus, 5000);
-                    })
-                    .catch((error) => {
-                      console.error("Error creating math visualization:", error);
-                      // Update the message with the error
-                      setMessages((prev) =>
-                        prev.map((msg) =>
-                          msg.id === aiMessage.id
-                            ? {
-                                ...msg,
-                                content: "Sorry, I encountered an error while creating the math visualization. Please try again.",
-                                visualizationStatus: "failed",
-                              }
-                            : msg
-                        )
-                      );
-                    });
-                }}
-              >
-                <Function className="h-5 w-5" />
-              </Button>
+              {/* Math visualization button and API call removed */}
               <Button
                 type="submit"
                 size="icon"
