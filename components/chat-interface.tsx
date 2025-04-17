@@ -1,12 +1,21 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+
+// Simple UUID generator function
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import styled from "@emotion/styled";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,7 +37,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { FunctionSquare as Function } from "lucide-react";
 import { BookLoader } from "./book-loader";
+import MathVisualization from "./math-visualization";
 
 // Styled component for grid pattern background
 const GridBackground = styled.div`
@@ -59,6 +70,7 @@ interface ChatInterfaceProps {
 
 interface ChatMessage {
   id: number;
+  uuid?: string; // UUID for the message
   role: "user" | "assistant";
   content: string;
   timestamp: string;
@@ -67,6 +79,8 @@ interface ChatMessage {
   svgData?: string; // SVG content to display
   svgHidden?: boolean; // Flag to indicate if SVG is hidden by user
   svgGenerating?: boolean; // Flag to indicate if SVG is currently being generated
+  visualizationId?: string; // ID of the math visualization
+  visualizationStatus?: string; // Status of the math visualization
 }
 
 export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
@@ -548,7 +562,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                     <Brain className="h-5 w-5 text-primary" />
                   </AvatarFallback>
                 </Avatar>
-                <motion.div
+                <Motion.div
                   className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -586,8 +600,14 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                 variant="ghost"
                 size="icon"
                 className="rounded-full h-9 w-9"
+                title="Math visualizations"
+                onClick={() => {
+                  // Open math visualizations panel
+                  // This is a placeholder for future implementation
+                  alert('Math visualizations feature is coming soon!');
+                }}
               >
-                <Video className="h-5 w-5" />
+                <Function className="h-5 w-5" />
               </Button>
             </div>
           </div>
@@ -618,7 +638,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                     </div>
                   )}
 
-                  <motion.div
+                  <Motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
@@ -682,6 +702,13 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                               >
                                 {message.content}
                               </ReactMarkdown>
+
+                              {/* Display math visualization if available */}
+                              {message.visualizationId && (
+                                <div className="mt-4">
+                                  <MathVisualization visualizationId={message.visualizationId} />
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <p className="text-sm">{message.content}</p>
@@ -745,7 +772,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                                           viewBox="0 0 200 200"
                                           className="opacity-20"
                                         >
-                                          <motion.circle
+                                          <Motion.circle
                                             cx="100"
                                             cy="100"
                                             r="50"
@@ -759,7 +786,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                                               repeat: Infinity,
                                             }}
                                           />
-                                          <motion.rect
+                                          <Motion.rect
                                             x="70"
                                             y="70"
                                             width="60"
@@ -775,7 +802,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                                               repeat: Infinity,
                                             }}
                                           />
-                                          <motion.path
+                                          <Motion.path
                                             d="M50,150 Q100,50 150,150"
                                             stroke="#4645F6"
                                             strokeWidth="2"
@@ -849,12 +876,12 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                         messages[index - 1].role === "user" &&
                         !message.isNewGroup && <div className="w-8"></div>}
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 </React.Fragment>
               ))}
             </AnimatePresence>
             {isTyping && (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex justify-start mt-1"
@@ -882,7 +909,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </Motion.div>
             )}
             <div ref={messagesEndRef} />
           </div>
@@ -904,13 +931,13 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                 className="pl-4 pr-10 py-3 rounded-full border-border bg-input text-foreground shadow-sm focus:shadow-md transition-all duration-200 placeholder:text-muted-foreground"
               />
               {!isTyping && input.trim() && (
-                <motion.div
+                <Motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-primary"
                 >
                   <Zap className="h-5 w-5 opacity-70" />
-                </motion.div>
+                </Motion.div>
               )}
             </div>
             {input.trim() && (
@@ -925,7 +952,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                       }`}
                       disabled={isTyping}
                     >
-                      <motion.div
+                      <Motion.div
                         className="absolute h-4 w-4 rounded-full bg-white shadow-sm"
                         animate={{ x: deepDiveEnabled ? 5 : 1 }}
                         transition={{
@@ -957,7 +984,7 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                     }`}
                     disabled={isTyping}
                   >
-                    <motion.div
+                    <Motion.div
                       className="absolute h-4 w-4 rounded-full bg-white shadow-sm"
                       animate={{ x: forceSVG ? 5 : 1 }}
                       transition={{
@@ -1007,14 +1034,145 @@ export default function ChatInterface({ initialMessage }: ChatInterfaceProps) {
                 </div>
               </div>
             )}
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isTyping || !input.trim()}
-              className="h-12 w-12 rounded-full shadow-sm bg-primary hover:bg-primary/90"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="icon"
+                disabled={isTyping || !input.trim()}
+                className="h-12 w-12 rounded-full shadow-sm bg-secondary hover:bg-secondary/90"
+                title="Generate math visualization"
+                onClick={() => {
+                  if (!input.trim()) return;
+
+                  // Store the current input
+                  const currentInput = input;
+
+                  // Generate UUIDs for the conversation and messages
+                  const conversationId = generateUUID();
+                  const userMessageId = generateUUID();
+                  const aiMessageId = generateUUID();
+
+                  // Add user message
+                  const userMessage: ChatMessage = {
+                    id: messages.length + 1,
+                    uuid: userMessageId,
+                    role: "user",
+                    content: input,
+                    timestamp: new Date().toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                  };
+                  setMessages((prev) => [...prev, userMessage]);
+                  setInput("");
+
+                  // Create a placeholder for the AI response
+                  const aiMessage: ChatMessage = {
+                    id: messages.length + 2,
+                    uuid: aiMessageId,
+                    role: "assistant",
+                    content: "I'll create a math visualization for you. This may take a moment...",
+                    timestamp: new Date().toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                    visualizationStatus: "pending",
+                  };
+                  setMessages((prev) => [...prev, aiMessage]);
+
+                  // Call the math visualization API
+                  fetch("/api/math-visualization/create", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      conversationId: conversationId,
+                      messageId: aiMessageId,
+                      prompt: currentInput,
+                    }),
+                  })
+                    .then((response) => {
+                      if (!response.ok) {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                      }
+                      return response.json();
+                    })
+                    .then((data) => {
+                      // Update the message with the visualization ID
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          msg.id === aiMessage.id
+                            ? {
+                                ...msg,
+                                visualizationId: data.visualizationId,
+                                visualizationStatus: data.status,
+                              }
+                            : msg
+                        )
+                      );
+
+                      // Start polling for status updates
+                      const pollStatus = () => {
+                        fetch(`/api/math-visualization/status/${data.visualizationId}`)
+                          .then((response) => response.json())
+                          .then((statusData) => {
+                            // Update the message with the latest status
+                            setMessages((prev) =>
+                              prev.map((msg) =>
+                                msg.id === aiMessage.id
+                                  ? {
+                                      ...msg,
+                                      visualizationStatus: statusData.status,
+                                    }
+                                  : msg
+                              )
+                            );
+
+                            // Continue polling if not completed or failed
+                            if (
+                              statusData.status !== "completed" &&
+                              statusData.status !== "failed"
+                            ) {
+                              setTimeout(pollStatus, 5000);
+                            }
+                          })
+                          .catch((error) => {
+                            console.error("Error polling visualization status:", error);
+                          });
+                      };
+
+                      // Start polling
+                      setTimeout(pollStatus, 5000);
+                    })
+                    .catch((error) => {
+                      console.error("Error creating math visualization:", error);
+                      // Update the message with the error
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          msg.id === aiMessage.id
+                            ? {
+                                ...msg,
+                                content: "Sorry, I encountered an error while creating the math visualization. Please try again.",
+                                visualizationStatus: "failed",
+                              }
+                            : msg
+                        )
+                      );
+                    });
+                }}
+              >
+                <Function className="h-5 w-5" />
+              </Button>
+              <Button
+                type="submit"
+                size="icon"
+                disabled={isTyping || !input.trim()}
+                className="h-12 w-12 rounded-full shadow-sm bg-primary hover:bg-primary/90"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+            </div>
           </form>
         </CardFooter>
       </div>
