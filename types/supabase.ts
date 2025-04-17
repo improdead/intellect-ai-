@@ -341,6 +341,56 @@ export interface Database {
           created_at?: string;
         };
       };
+      math_visualizations: {
+        Row: {
+          id: string;
+          user_id: string;
+          conversation_id: string;
+          message_id: string;
+          prompt: string;
+          script?: string;
+          audio_url?: string;
+          manim_code?: string;
+          video_url?: string;
+          combined_video_url?: string;
+          status: string;
+          error_message?: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          conversation_id: string;
+          message_id: string;
+          prompt: string;
+          script?: string;
+          audio_url?: string;
+          manim_code?: string;
+          video_url?: string;
+          combined_video_url?: string;
+          status: string;
+          error_message?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          conversation_id?: string;
+          message_id?: string;
+          prompt?: string;
+          script?: string;
+          audio_url?: string;
+          manim_code?: string;
+          video_url?: string;
+          combined_video_url?: string;
+          status?: string;
+          error_message?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

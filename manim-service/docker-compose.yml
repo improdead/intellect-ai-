@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  manim-service:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./output:/app/output
+    environment:
+      - PORT=8000
+      # Uncomment and set these for S3 integration
+      # - AWS_ACCESS_KEY_ID=your_access_key
+      # - AWS_SECRET_ACCESS_KEY=your_secret_key
+      # - AWS_REGION=us-east-1
+      # - S3_BUCKET_NAME=your_bucket_name
